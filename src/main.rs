@@ -21,8 +21,8 @@ fn main() {
     ))
     .add(Plane::new((0.0, 1.0, 0.0), (0.0, -1.0, 0.0)))
     .add(subtract(
-        Sphere::new((0.0, 0.5, 0.5), 1.0),
         Sphere::new((0.0, 0.0, 0.0), 1.0),
+        Sphere::new((-0.5, 0.0, -0.5), 1.0),
     ))
     .build();
 

@@ -1,7 +1,7 @@
 use image::RgbaImage;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::{primitives::SignedDistance, ray::ViewRay, scene::Scene, vector3::Vector3};
+use crate::{ray::ViewRay, scene::Scene, vector3::Vector3};
 
 pub fn render(scene: &Scene, (width, height): (u32, u32)) -> RgbaImage {
     let mut image = RgbaImage::new(width, height);
@@ -37,9 +37,9 @@ pub fn signed_distance(point: Vector3, scene: &Scene) -> f64 {
 }
 
 pub fn calculate_normal(point: Vector3, scene: &Scene) -> Vector3 {
-    let small_step_x = (0.00001, 0.0, 0.0).into();
-    let small_step_y = (0.0, 0.00001, 0.0).into();
-    let small_step_z = (0.0, 0.0, 0.00001).into();
+    let small_step_x = (0.0001, 0.0, 0.0).into();
+    let small_step_y = (0.0, 0.0001, 0.0).into();
+    let small_step_z = (0.0, 0.0, 0.0001).into();
 
     Vector3 {
         x: signed_distance(point + small_step_x, scene)
@@ -59,30 +59,18 @@ pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
         let steps = ray.steps as u8;
         let signed_distance = signed_distance(ray.position, scene);
 
-        // Clip plane
-        if ray_length > 1000.0 * 1000.0 {
-            ray.color = (255, steps - 255, steps - 255);
-            break;
-        }
-
         // Hit object
-        if signed_distance <= 0.0001 {
-            let Vector3 { x: r, y: g, z: b } =
-                calculate_normal(ray.position, scene) + (0.5, 0.5, 0.5).into();
-
-            ray.color = ((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8);
-
-            break;
-        }
-
-        // Timeout
-        if steps == 255 {
-            ray.color = (steps - 255, steps - 255, 255);
+        if signed_distance <= 0.00001 || ray_length > 1000.0 * 1000.0 || steps == 255 {
             break;
         }
 
         ray.step(signed_distance);
     }
+
+    let Vector3 { x: r, y: g, z: b } =
+        calculate_normal(ray.position, scene) + (0.5, 0.5, 0.5).into();
+
+    ray.color = ((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8);
 
     ray
 }
