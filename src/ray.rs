@@ -22,6 +22,11 @@ impl ViewRay {
     }
 
     #[inline]
+    pub fn len_sq(&self) -> f32 {
+        (self.origin - self.position).magnitude_sq()
+    }
+
+    #[inline]
     pub fn step(&mut self, distance: f32) {
         self.steps += 1;
         self.position += self.orientation.multiply_scalar(distance);

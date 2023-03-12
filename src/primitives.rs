@@ -3,6 +3,6 @@ pub mod sphere;
 
 use crate::vector3::Vector3;
 
-pub trait SignedDistance {
+pub trait SignedDistance: Sync {
     fn distance_from(&self, position: Vector3) -> f32;
 }

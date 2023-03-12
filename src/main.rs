@@ -26,5 +26,5 @@ fn main() {
     ))
     .build();
 
-    _ = render(&scene, (1920 / 2, 1080 / 2)).save("./test.png");
+    _ = render(&scene, (1920, 1080)).save("./test.png");
 }
