@@ -1,21 +1,21 @@
 use crate::{ray::ViewRay, vector3::Vector3};
 
 pub struct Camera {
-    pub fov: f32,
+    pub fov: f64,
     pub position: Vector3,
     pub orientation: Vector3,
-    horizontal_aspect: f32,
-    vertical_aspect: f32,
-    horizontal_fov: f32,
-    vertical_fov: f32,
+    horizontal_aspect: f64,
+    vertical_aspect: f64,
+    horizontal_fov: f64,
+    vertical_fov: f64,
 }
 
 impl Camera {
     pub fn new(
-        fov: f32,
+        fov: f64,
         position: impl Into<Vector3>,
         orientation: impl Into<Vector3>,
-        (width, height): (f32, f32),
+        (width, height): (f64, f64),
     ) -> Self {
         let horizontal_aspect = width / width.min(height);
         let vertical_aspect = height / width.min(height);
@@ -35,7 +35,7 @@ impl Camera {
     }
 
     // Gets a ray given UV coordinates
-    pub fn get_ray(&self, x: f32, y: f32) -> ViewRay {
+    pub fn get_ray(&self, x: f64, y: f64) -> ViewRay {
         let angle_y = (y - 0.5) * self.vertical_fov;
         let angle_x = (x - 0.5) * self.horizontal_fov;
 

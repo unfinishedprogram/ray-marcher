@@ -2,24 +2,24 @@ use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vector3 {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
 impl Vector3 {
     #[inline]
-    pub fn magnitude_sq(&self) -> f32 {
+    pub fn magnitude_sq(&self) -> f64 {
         self.x * self.x + self.y * self.y + self.z * self.z
     }
 
     #[inline]
-    pub fn magnitude(&self) -> f32 {
+    pub fn magnitude(&self) -> f64 {
         self.magnitude_sq().sqrt()
     }
 
     #[inline]
-    pub fn dot(self, other: Vector3) -> f32 {
+    pub fn dot(self, other: Vector3) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
@@ -34,7 +34,7 @@ impl Vector3 {
     }
 
     #[inline]
-    pub fn rotate(&self, axis: Vector3, angle: f32) -> Vector3 {
+    pub fn rotate(&self, axis: Vector3, angle: f64) -> Vector3 {
         let (sin_a, cos_a) = angle.sin_cos();
         let dot_product = self.dot(axis);
         let cross_product = self.cross(axis);
@@ -44,7 +44,7 @@ impl Vector3 {
     }
 
     #[inline]
-    pub fn multiply_scalar(self, scalar: f32) -> Vector3 {
+    pub fn multiply_scalar(self, scalar: f64) -> Vector3 {
         Vector3 {
             x: self.x * scalar,
             y: self.y * scalar,
@@ -107,9 +107,9 @@ impl SubAssign for Vector3 {
     }
 }
 
-impl From<(f32, f32, f32)> for Vector3 {
+impl From<(f64, f64, f64)> for Vector3 {
     #[inline]
-    fn from((x, y, z): (f32, f32, f32)) -> Self {
+    fn from((x, y, z): (f64, f64, f64)) -> Self {
         Vector3 { x, y, z }
     }
 }

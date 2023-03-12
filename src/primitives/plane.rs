@@ -17,7 +17,7 @@ impl Plane {
 }
 
 impl SignedDistance for Plane {
-    fn distance_from(&self, position: Vector3) -> f32 {
+    fn distance_from(&self, position: Vector3) -> f64 {
         self.normal.dot(position - self.position)
     }
 }
