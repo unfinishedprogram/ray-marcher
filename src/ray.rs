@@ -21,8 +21,9 @@ impl ViewRay {
         }
     }
 
+    #[inline]
     pub fn step(&mut self, distance: f32) {
         self.steps += 1;
-        self.position = self.position + self.orientation.multiply_scalar(distance);
+        self.position += self.orientation.multiply_scalar(distance);
     }
 }
