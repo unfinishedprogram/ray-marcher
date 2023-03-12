@@ -1,7 +1,7 @@
 use image::RgbaImage;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::{ray::ViewRay, scene::Scene};
+use crate::{primitives::SignedDistance, ray::ViewRay, scene::Scene, vector3::Vector3};
 
 pub fn render(scene: &Scene, (width, height): (u32, u32)) -> RgbaImage {
     let mut image = RgbaImage::new(width, height);
@@ -27,18 +27,36 @@ pub fn render(scene: &Scene, (width, height): (u32, u32)) -> RgbaImage {
     image
 }
 
+pub fn signed_distance(point: Vector3, scene: &Scene) -> f32 {
+    scene
+        .entities
+        .iter()
+        .map(|entity| entity.distance_from(point))
+        .reduce(f32::min)
+        .unwrap_or_default()
+}
+
+pub fn calculate_normal(point: Vector3, scene: &Scene) -> Vector3 {
+    let small_step_x = (0.1, 0.0, 0.0).into();
+    let small_step_y = (0.0, 0.1, 0.0).into();
+    let small_step_z = (0.0, 0.0, 0.1).into();
+
+    Vector3 {
+        x: signed_distance(point + small_step_x, scene)
+            - signed_distance(point - small_step_x, scene),
+        y: signed_distance(point + small_step_y, scene)
+            - signed_distance(point - small_step_y, scene),
+        z: signed_distance(point + small_step_z, scene)
+            - signed_distance(point - small_step_z, scene),
+    }
+}
+
 pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
     loop {
         let ray_length = ray.len_sq();
 
-        let signed_distance = scene
-            .entities
-            .iter()
-            .map(|entity| entity.distance_from(ray.position))
-            .reduce(f32::min)
-            .unwrap_or_default();
-
         let steps = ray.steps as u8;
+        let signed_distance = signed_distance(ray.position, scene);
 
         // Clip plane
         if ray_length > 1000.0 * 1000.0 {
@@ -48,7 +66,11 @@ pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
 
         // Hit object
         if signed_distance <= 0.0001 {
-            ray.color = (steps - 255, 255, steps - 255);
+            let Vector3 { x: r, y: g, z: b } =
+                calculate_normal(ray.position, scene) + (0.5, 0.5, 0.5).into();
+
+            ray.color = ((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8);
+
             break;
         }
 
