@@ -77,7 +77,6 @@ pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
         ray.step(signed_distance);
     }
     let surface_normal = calculate_normal(ray.position, scene) + (0.5, 0.5, 0.5).into();
-    let Vector3 { x: r, y: g, z: b } = surface_normal;
 
     let intensity = calculate_light(ray.position, surface_normal, scene);
 
