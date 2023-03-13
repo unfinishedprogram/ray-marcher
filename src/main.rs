@@ -5,6 +5,7 @@ mod camera;
 mod combine;
 mod light;
 mod primitives;
+pub mod quaternion;
 mod ray;
 mod render;
 mod scene;
@@ -12,16 +13,17 @@ mod vector3;
 use angle::Angle;
 use combine::subtract;
 use primitives::plane::Plane;
+use quaternion::get_rotation;
 use render::render;
 use scene::SceneBuilder;
 use vector3::Vector3;
 
 fn main() {
     let scene = SceneBuilder::new(Camera::new(
-        Angle::from_degrees(90.0),
+        Angle::from_degrees(60.0),
         16.0 / 9.0,
-        (0.0, 0.0, -5.0),
-        (0.0, 0.0, 1.0),
+        (0.0, 0.0, -10.0),
+        get_rotation(Angle::from_degrees(20.0), (1.0, 0.0, 0.0).into()),
         (1.0, 200.0),
     ))
     .add(Plane::new((0.0, 1.0, 0.0), (0.0, -5.0, 0.0)))

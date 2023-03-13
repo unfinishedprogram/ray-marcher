@@ -1,9 +1,9 @@
-use crate::{angle::Angle, ray::ViewRay, vector3::Vector3};
+use crate::{angle::Angle, quaternion::Quaternion, ray::ViewRay, vector3::Vector3};
 
 pub struct Camera {
     pub fov: Angle,
     pub position: Vector3,
-    pub orientation: Vector3,
+    pub orientation: Quaternion,
     pub clip_plane: (f64, f64),
     // Vertical aspect is baseline: 16:9 = ~1.77
     pub aspect_ratio: f64,
@@ -14,33 +14,39 @@ impl Camera {
         fov: Angle,
         aspect_ratio: f64,
         position: impl Into<Vector3>,
-        orientation: impl Into<Vector3>,
+        orientation: Quaternion,
         clip_plane: (f64, f64),
     ) -> Self {
         Camera {
             fov,
             aspect_ratio,
             position: position.into(),
-            orientation: orientation.into(),
+            orientation,
             clip_plane,
         }
     }
 
     // Gets a ray given UV coordinates
     pub fn get_ray(&self, x: f64, y: f64) -> ViewRay {
-        let angle_y = self.fov * (-y + 0.5);
-        let angle_x = self.fov * (x - 0.5) * self.aspect_ratio;
+        // let angle_y = self.fov * (-y + 0.5);
+        // let angle_x = self.fov * (x - 0.5) * self.aspect_ratio;
 
-        let ray_origin = self.position
-            + (
-                angle_x.rad().sin(), // X
-                angle_y.rad().sin(), // Y
-                self.clip_plane.0,
-            )
-                .into();
+        let y = -y + 0.5;
+        let x = (x - 0.5) * self.aspect_ratio;
 
-        let ray_direction = (ray_origin - self.position).normalize();
+        let direction = Vector3 {
+            x,
+            y,
+            z: self.clip_plane.0,
+        }
+        .normalize()
+        .apply_rotation(self.orientation);
 
-        ViewRay::new(self.position, ray_direction, self.clip_plane)
+        // let direction: Vector3 =
+        //     Vector3::from((angle_x.rad().sin(), angle_y.rad().sin(), self.clip_plane.0))
+        //         .apply_rotation(self.orientation)
+        //         .normalize();
+
+        ViewRay::new(self.position, direction, self.clip_plane)
     }
 }

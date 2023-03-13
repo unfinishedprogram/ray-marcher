@@ -1,6 +1,9 @@
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
-use crate::angle::Angle;
+use crate::{
+    angle::Angle,
+    quaternion::{self, hamilton_product, Quaternion},
+};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vector3 {
@@ -41,15 +44,20 @@ impl Vector3 {
             .into()
     }
 
+    pub fn apply_rotation(self, r: Quaternion) -> Vector3 {
+        let Vector3 { x, y, z } = self;
+        let p = (0.0, x, y, z);
+        let r_prime = (r.0, -r.1, -r.2, -r.3);
+
+        let (_, x, y, z) = hamilton_product(hamilton_product(r, p), r_prime);
+
+        Vector3 { x, y, z }
+    }
+
     #[inline]
     pub fn rotate(self, axis: Vector3, angle: Angle) -> Vector3 {
-        let axis = axis.normalize();
-        let (sin_a, cos_a) = angle.rad().sin_cos();
-        let dot_product = self.dot(axis);
-        let cross_product = self.cross(axis);
-        axis.multiply_scalar(dot_product * (1.0 - cos_a))
-            + self
-            + cross_product.multiply_scalar(sin_a)
+        let r = quaternion::get_rotation(angle, axis);
+        self.apply_rotation(r)
     }
 
     #[inline]
@@ -69,6 +77,13 @@ impl Vector3 {
         } else {
             self
         }
+    }
+
+    pub fn rotate_xyz(self, other: Vector3) -> Vector3 {
+        let Vector3 { x, y, z } = other;
+        self.rotate((1.0, 0.0, 0.0).into(), Angle::from_radians(x))
+            .rotate((0.0, 1.0, 0.0).into(), Angle::from_radians(y))
+            .rotate((0.0, 0.0, 1.0).into(), Angle::from_radians(z))
     }
 }
 
