@@ -10,6 +10,12 @@ pub struct Vector3 {
 }
 
 impl Vector3 {
+    pub const ZERO: Vector3 = Vector3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+
     #[inline]
     pub fn magnitude_sq(&self) -> f64 {
         self.x * self.x + self.y * self.y + self.z * self.z
@@ -58,10 +64,10 @@ impl Vector3 {
     #[inline]
     pub fn normalize(self) -> Vector3 {
         let mag = self.magnitude();
-        if mag == 0.0 {
-            self
-        } else {
+        if mag != 0.0 {
             self.multiply_scalar(1.0 / mag)
+        } else {
+            self
         }
     }
 }
@@ -114,5 +120,11 @@ impl From<(f64, f64, f64)> for Vector3 {
     #[inline]
     fn from((x, y, z): (f64, f64, f64)) -> Self {
         Vector3 { x, y, z }
+    }
+}
+
+impl From<Vector3> for (f64, f64, f64) {
+    fn from(Vector3 { x, y, z }: Vector3) -> (f64, f64, f64) {
+        (x, y, z)
     }
 }

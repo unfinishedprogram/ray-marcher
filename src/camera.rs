@@ -28,15 +28,19 @@ impl Camera {
 
     // Gets a ray given UV coordinates
     pub fn get_ray(&self, x: f64, y: f64) -> ViewRay {
-        let angle_y = self.fov * (y - 0.5);
+        let angle_y = self.fov * (-y + 0.5);
         let angle_x = self.fov * (x - 0.5) * self.aspect_ratio;
 
-        ViewRay::new(
-            self.position,
-            self.orientation
-                .rotate((1.0, 0.0, 0.0).into(), angle_y)
-                .rotate((0.0, 1.0, 0.0).into(), angle_x),
-            self.clip_plane,
-        )
+        let ray_origin = self.position
+            + (
+                angle_x.rad().sin(), // X
+                angle_y.rad().sin(), // Y
+                self.clip_plane.0,
+            )
+                .into();
+
+        let ray_direction = (ray_origin - self.position).normalize();
+
+        ViewRay::new(self.position, ray_direction, self.clip_plane)
     }
 }

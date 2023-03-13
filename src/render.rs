@@ -41,7 +41,7 @@ pub fn calculate_light(point: Vector3, normal: Vector3, scene: &Scene) -> f64 {
 
     for light in &scene.lights {
         let light_direction = (light.position - point).normalize();
-        lighting += light_direction.dot(normal);
+        lighting += light_direction.dot(normal) * light.intensity;
     }
 
     lighting
@@ -76,10 +76,11 @@ pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
 
         ray.step(signed_distance);
     }
-    let surface_normal = calculate_normal(ray.position, scene) + (0.5, 0.5, 0.5).into();
 
+    let surface_normal = calculate_normal(ray.position, scene);
     let intensity = calculate_light(ray.position, surface_normal, scene);
 
+    // ray.color = (r as u8, g as u8, b as u8);
     ray.color = (
         (intensity * 255.0) as u8,
         (intensity * 255.0) as u8,
