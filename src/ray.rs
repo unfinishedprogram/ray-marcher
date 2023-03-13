@@ -5,7 +5,7 @@ pub struct ViewRay {
     pub position: Vector3,
     pub orientation: Vector3,
     pub steps: u32,
-    pub color: (u8, u8, u8),
+    pub color: Vector3,
     pub clip: (f64, f64),
 }
 
@@ -18,7 +18,7 @@ impl ViewRay {
             position: origin,
             orientation,
             steps: 0,
-            color: (0, 0, 0),
+            color: Vector3::ZERO,
             clip,
         }
     }

@@ -15,7 +15,7 @@ pub fn render(scene: &Scene, (width, height): (u32, u32)) -> RgbaImage {
                 .camera
                 .get_ray(x as f64 / width as f64, y as f64 / height as f64);
 
-            march(ray, scene).color
+            march(ray, scene).color.rgb_u8()
         })
         .collect();
 
@@ -36,12 +36,14 @@ pub fn signed_distance(point: Vector3, scene: &Scene) -> f64 {
         .unwrap_or_default()
 }
 
-pub fn calculate_light(point: Vector3, normal: Vector3, scene: &Scene) -> f64 {
-    let mut lighting = 0.0;
+pub fn calculate_light(point: Vector3, normal: Vector3, scene: &Scene) -> Vector3 {
+    let mut lighting = Vector3::ZERO;
 
     for light in &scene.lights {
         let light_direction = (light.position - point).normalize();
-        lighting += light_direction.dot(normal) * light.intensity;
+        lighting += light
+            .color
+            .multiply_scalar(light_direction.dot(normal) + 0.5);
     }
 
     lighting
@@ -78,14 +80,7 @@ pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
     }
 
     let surface_normal = calculate_normal(ray.position, scene);
-    let intensity = calculate_light(ray.position, surface_normal, scene);
-
-    // ray.color = (r as u8, g as u8, b as u8);
-    ray.color = (
-        (intensity * 255.0) as u8,
-        (intensity * 255.0) as u8,
-        (intensity * 255.0) as u8,
-    );
+    ray.color = calculate_light(ray.position, surface_normal, scene);
 
     ray
 }

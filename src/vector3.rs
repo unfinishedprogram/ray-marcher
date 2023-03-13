@@ -3,6 +3,7 @@ use std::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::{
     angle::Angle,
     quaternion::{self, hamilton_product, Quaternion},
+    util::interpolation::soft_clamp,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -84,6 +85,15 @@ impl Vector3 {
         self.rotate((1.0, 0.0, 0.0).into(), Angle::from_radians(x))
             .rotate((0.0, 1.0, 0.0).into(), Angle::from_radians(y))
             .rotate((0.0, 0.0, 1.0).into(), Angle::from_radians(z))
+    }
+
+    pub fn rgb_u8(self) -> (u8, u8, u8) {
+        let Vector3 { x, y, z } = self;
+        (
+            soft_clamp(x * 255.0, 0.0, 255.0) as u8,
+            soft_clamp(y * 255.0, 0.0, 255.0) as u8,
+            soft_clamp(z * 255.0, 0.0, 255.0) as u8,
+        )
     }
 }
 

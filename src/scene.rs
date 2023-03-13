@@ -34,8 +34,8 @@ impl SceneBuilder {
         self
     }
 
-    pub fn light(mut self, position: impl Into<Vector3>, intensity: f64) -> Self {
-        self.lights.push(Light::new(position, intensity));
+    pub fn light(mut self, position: impl Into<Vector3>, color: impl Into<Vector3>) -> Self {
+        self.lights.push(Light::new(position, color));
 
         self
     }

@@ -9,6 +9,7 @@ pub mod quaternion;
 mod ray;
 mod render;
 mod scene;
+mod util;
 mod vector3;
 use angle::Angle;
 use combine::subtract;
@@ -34,7 +35,7 @@ fn main() {
     ))
     .add(Sphere::new((-3.0, 0.0, 0.0), 0.5))
     .add(Sphere::new((3.0, 0.0, 0.0), 0.5))
-    .light((10.0, 5.0, 0.0), 1.0)
+    .light((10.0, 5.0, 0.0), (1.0, 1.0, 0.0))
     .build();
 
     _ = render(&scene, (1920, 1080)).save("./test.png");

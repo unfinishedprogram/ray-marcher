@@ -2,14 +2,14 @@ use crate::vector3::Vector3;
 
 pub struct Light {
     pub position: Vector3,
-    pub intensity: f64,
+    pub color: Vector3,
 }
 
 impl Light {
-    pub fn new(position: impl Into<Vector3>, intensity: f64) -> Self {
+    pub fn new(position: impl Into<Vector3>, color: impl Into<Vector3>) -> Self {
         Self {
             position: position.into(),
-            intensity,
+            color: color.into(),
         }
     }
 }
