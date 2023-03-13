@@ -34,12 +34,13 @@ impl Vector3 {
     }
 
     #[inline]
-    pub fn rotate(&self, axis: Vector3, angle: f64) -> Vector3 {
+    pub fn rotate(self, axis: Vector3, angle: f64) -> Vector3 {
+        let axis = axis.normalize();
         let (sin_a, cos_a) = angle.sin_cos();
         let dot_product = self.dot(axis);
         let cross_product = self.cross(axis);
         axis.multiply_scalar(dot_product * (1.0 - cos_a))
-            + *self
+            + self
             + cross_product.multiply_scalar(sin_a)
     }
 

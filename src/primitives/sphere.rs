@@ -18,6 +18,6 @@ impl Sphere {
 
 impl SignedDistance for Sphere {
     fn distance_from(&self, position: Vector3) -> f64 {
-        (position - self.position).magnitude() - self.radius
+        (position - self.position).magnitude() - self.radius * 0.5
     }
 }

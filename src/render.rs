@@ -36,10 +36,20 @@ pub fn signed_distance(point: Vector3, scene: &Scene) -> f64 {
         .unwrap_or_default()
 }
 
+pub fn calculate_light(point: Vector3, normal: Vector3, scene: &Scene) -> f64 {
+    let mut lighting = 0.0;
+
+    for light in &scene.lights {
+        let light_direction = (light.position - point).normalize();
+        lighting += light_direction.dot(normal);
+    }
+
+    lighting
+}
 pub fn calculate_normal(point: Vector3, scene: &Scene) -> Vector3 {
-    let small_step_x = (0.0001, 0.0, 0.0).into();
-    let small_step_y = (0.0, 0.0001, 0.0).into();
-    let small_step_z = (0.0, 0.0, 0.0001).into();
+    let small_step_x = (0.000001, 0.0, 0.0).into();
+    let small_step_y = (0.0, 0.000001, 0.0).into();
+    let small_step_z = (0.0, 0.0, 0.000001).into();
 
     Vector3 {
         x: signed_distance(point + small_step_x, scene)
@@ -60,17 +70,22 @@ pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
         let signed_distance = signed_distance(ray.position, scene);
 
         // Hit object
-        if signed_distance <= 0.00001 || ray_length > 1000.0 * 1000.0 || steps == 255 {
+        if signed_distance <= 0.000001 || ray_length > 1000.0 * 1000.0 || steps == 255 {
             break;
         }
 
         ray.step(signed_distance);
     }
+    let surface_normal = calculate_normal(ray.position, scene) + (0.5, 0.5, 0.5).into();
+    let Vector3 { x: r, y: g, z: b } = surface_normal;
 
-    let Vector3 { x: r, y: g, z: b } =
-        calculate_normal(ray.position, scene) + (0.5, 0.5, 0.5).into();
+    let intensity = calculate_light(ray.position, surface_normal, scene);
 
-    ray.color = ((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8);
+    ray.color = (
+        (intensity * 255.0) as u8,
+        (intensity * 255.0) as u8,
+        (intensity * 255.0) as u8,
+    );
 
     ray
 }
