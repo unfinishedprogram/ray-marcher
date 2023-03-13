@@ -30,6 +30,7 @@ pub fn subtract<A: SignedDistance, B: SignedDistance>(a: A, b: B) -> Combine<A, 
 pub fn intersect<A: SignedDistance, B: SignedDistance>(a: A, b: B) -> Combine<A, B> {
     Combine::Intersect(Box::new(a), Box::new(b))
 }
+
 pub fn union<A: SignedDistance, B: SignedDistance>(a: A, b: B) -> Combine<A, B> {
     Combine::Union(Box::new(a), Box::new(b))
 }

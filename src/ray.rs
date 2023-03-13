@@ -6,18 +6,20 @@ pub struct ViewRay {
     pub orientation: Vector3,
     pub steps: u32,
     pub color: (u8, u8, u8),
+    pub clip: (f64, f64),
 }
 
 impl ViewRay {
-    pub fn new(origin: impl Into<Vector3>, orientation: impl Into<Vector3>) -> Self {
-        let origin = origin.into();
+    pub fn new(origin: Vector3, orientation: Vector3, clip: (f64, f64)) -> Self {
+        let origin = origin;
 
         Self {
             origin,
             position: origin,
-            orientation: orientation.into(),
+            orientation,
             steps: 0,
             color: (0, 0, 0),
+            clip,
         }
     }
 

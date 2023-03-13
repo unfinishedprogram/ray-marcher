@@ -1,5 +1,7 @@
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
+use crate::angle::Angle;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Vector3 {
     pub x: f64,
@@ -34,9 +36,9 @@ impl Vector3 {
     }
 
     #[inline]
-    pub fn rotate(self, axis: Vector3, angle: f64) -> Vector3 {
+    pub fn rotate(self, axis: Vector3, angle: Angle) -> Vector3 {
         let axis = axis.normalize();
-        let (sin_a, cos_a) = angle.sin_cos();
+        let (sin_a, cos_a) = angle.rad().sin_cos();
         let dot_product = self.dot(axis);
         let cross_product = self.cross(axis);
         axis.multiply_scalar(dot_product * (1.0 - cos_a))
