@@ -1,7 +1,11 @@
 use image::RgbaImage;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
-use crate::{ray::ViewRay, scene::Scene, vector3::Vector3};
+use crate::{
+    ray::ViewRay,
+    scene::Scene,
+    vector3::{Vec3, Vector3},
+};
 
 pub fn render(scene: &Scene, (width, height): (u32, u32)) -> RgbaImage {
     let mut image = RgbaImage::new(width, height);
@@ -27,7 +31,7 @@ pub fn render(scene: &Scene, (width, height): (u32, u32)) -> RgbaImage {
     image
 }
 
-pub fn signed_distance(point: Vector3, scene: &Scene) -> f64 {
+pub fn signed_distance(point: Vec3, scene: &Scene) -> f64 {
     scene
         .entities
         .iter()
@@ -36,36 +40,36 @@ pub fn signed_distance(point: Vector3, scene: &Scene) -> f64 {
         .unwrap_or_default()
 }
 
-pub fn calculate_light(point: Vector3, normal: Vector3, scene: &Scene) -> Vector3 {
-    let mut lighting = Vector3::ZERO;
+pub fn calculate_light(point: Vec3, normal: Vec3, scene: &Scene) -> Vec3 {
+    let mut lighting = (0.0, 0.0, 0.0);
 
     for light in &scene.lights {
-        let light_delta = light.position - point;
+        let light_delta = light.position.sub(point);
         let light_distance = light_delta.magnitude_sq();
         let light_direction = light_delta.normalize();
 
         let angle = light_direction.dot(normal);
         let power = angle / light_distance;
 
-        lighting += light.color.multiply_scalar(power);
+        lighting.add_assign(light.color.multiply_scalar(power));
     }
 
     lighting
 }
-pub fn calculate_normal(point: Vector3, scene: &Scene) -> Vector3 {
-    let small_step_x = (0.000001, 0.0, 0.0).into();
-    let small_step_y = (0.0, 0.000001, 0.0).into();
-    let small_step_z = (0.0, 0.0, 0.000001).into();
+pub fn calculate_normal(point: Vec3, scene: &Scene) -> Vec3 {
+    let small_step_x = (0.000001, 0.0, 0.0);
+    let small_step_y = (0.0, 0.000001, 0.0);
+    let small_step_z = (0.0, 0.0, 0.000001);
 
-    Vector3 {
-        x: signed_distance(point + small_step_x, scene)
-            - signed_distance(point - small_step_x, scene),
-        y: signed_distance(point + small_step_y, scene)
-            - signed_distance(point - small_step_y, scene),
-        z: signed_distance(point + small_step_z, scene)
-            - signed_distance(point - small_step_z, scene),
-    }
-    .normalize()
+    (
+        signed_distance(point.add(small_step_x), scene)
+            - signed_distance(point.sub(small_step_x), scene),
+        signed_distance(point.add(small_step_y), scene)
+            - signed_distance(point.sub(small_step_y), scene),
+        signed_distance(point.add(small_step_z), scene)
+            - signed_distance(point.sub(small_step_z), scene),
+    )
+        .normalize()
 }
 
 pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {

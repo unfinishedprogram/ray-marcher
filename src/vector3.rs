@@ -1,77 +1,82 @@
-use std::ops::{Add, AddAssign, Sub, SubAssign};
-
 use crate::{
     angle::Angle,
     quaternion::{self, hamilton_product, Quaternion},
     util::interpolation::soft_clamp,
 };
 
-#[derive(Clone, Copy, Debug)]
-pub struct Vector3 {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+pub type Vec3 = (f64, f64, f64);
+
+pub trait Vector3 {
+    const ZERO: Vec3 = (0.0, 0.0, 0.0);
+
+    fn magnitude_sq(&self) -> f64;
+
+    fn magnitude(&self) -> f64 {
+        self.magnitude_sq().sqrt()
+    }
+
+    fn dot(self, other: Self) -> f64;
+    fn cross(self, other: Vec3) -> Vec3;
+    fn apply_rotation(self, r: Quaternion) -> Vec3;
+    fn rotate(self, axis: Vec3, angle: Angle) -> Vec3;
+    fn multiply_scalar(self, scalar: f64) -> Vec3;
+    fn normalize(self) -> Vec3;
+    fn rotate_xyz(self, other: Vec3) -> Vec3;
+    fn rgb_u8(self) -> (u8, u8, u8);
+    fn sub(self, rhs: Vec3) -> Vec3;
+    fn add(self, rhs: Self) -> Vec3;
+    fn add_assign(&mut self, rhs: Vec3);
+    fn sub_assign(&mut self, rhs: Vec3);
 }
 
-impl Vector3 {
-    pub const ZERO: Vector3 = Vector3 {
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
-    };
-
+impl Vector3 for Vec3 {
     #[inline]
-    pub fn magnitude_sq(&self) -> f64 {
-        self.x * self.x + self.y * self.y + self.z * self.z
+    fn magnitude_sq(&self) -> f64 {
+        self.0 * self.0 + self.1 * self.1 + self.2 * self.2
     }
 
     #[inline]
-    pub fn magnitude(&self) -> f64 {
+    fn magnitude(&self) -> f64 {
         self.magnitude_sq().sqrt()
     }
 
     #[inline]
-    pub fn dot(self, other: Vector3) -> f64 {
-        self.x * other.x + self.y * other.y + self.z * other.z
+    fn dot(self, other: Vec3) -> f64 {
+        self.0 * other.0 + self.1 * other.1 + self.2 * other.2
     }
 
     #[inline]
-    pub fn cross(self, other: Vector3) -> Vector3 {
+    fn cross(self, other: Vec3) -> Vec3 {
         (
-            other.y * self.z - other.z * self.y,
-            other.z * self.x - other.x * self.z,
-            other.x * self.y - other.y * self.x,
+            other.1 * self.2 - other.2 * self.1,
+            other.2 * self.0 - other.0 * self.2,
+            other.0 * self.1 - other.1 * self.0,
         )
-            .into()
     }
 
-    pub fn apply_rotation(self, r: Quaternion) -> Vector3 {
-        let Vector3 { x, y, z } = self;
+    fn apply_rotation(self, r: Quaternion) -> Vec3 {
+        let (x, y, z) = self;
         let p = (0.0, x, y, z);
         let r_prime = (r.0, -r.1, -r.2, -r.3);
 
         let (_, x, y, z) = hamilton_product(hamilton_product(r, p), r_prime);
 
-        Vector3 { x, y, z }
+        (x, y, z)
     }
 
     #[inline]
-    pub fn rotate(self, axis: Vector3, angle: Angle) -> Vector3 {
+    fn rotate(self, axis: Vec3, angle: Angle) -> Vec3 {
         let r = quaternion::get_rotation(angle, axis);
         self.apply_rotation(r)
     }
 
     #[inline]
-    pub fn multiply_scalar(self, scalar: f64) -> Vector3 {
-        Vector3 {
-            x: self.x * scalar,
-            y: self.y * scalar,
-            z: self.z * scalar,
-        }
+    fn multiply_scalar(self, scalar: f64) -> Vec3 {
+        (self.0 * scalar, self.1 * scalar, self.2 * scalar)
     }
 
     #[inline]
-    pub fn normalize(self) -> Vector3 {
+    fn normalize(self) -> Vec3 {
         let mag = self.magnitude();
         if mag != 0.0 {
             self.multiply_scalar(1.0 / mag)
@@ -80,76 +85,39 @@ impl Vector3 {
         }
     }
 
-    pub fn rotate_xyz(self, other: Vector3) -> Vector3 {
-        let Vector3 { x, y, z } = other;
-        self.rotate((1.0, 0.0, 0.0).into(), Angle::from_radians(x))
-            .rotate((0.0, 1.0, 0.0).into(), Angle::from_radians(y))
-            .rotate((0.0, 0.0, 1.0).into(), Angle::from_radians(z))
+    fn rotate_xyz(self, other: Vec3) -> Vec3 {
+        let (x, y, z) = other;
+        self.rotate((1.0, 0.0, 0.0), Angle::from_radians(x))
+            .rotate((0.0, 1.0, 0.0), Angle::from_radians(y))
+            .rotate((0.0, 0.0, 1.0), Angle::from_radians(z))
     }
 
-    pub fn rgb_u8(self) -> (u8, u8, u8) {
-        let Vector3 { x, y, z } = self;
+    fn rgb_u8(self) -> (u8, u8, u8) {
+        let (x, y, z) = self;
         (
             soft_clamp(x * 255.0, 0.0, 255.0) as u8,
             soft_clamp(y * 255.0, 0.0, 255.0) as u8,
             soft_clamp(z * 255.0, 0.0, 255.0) as u8,
         )
     }
-}
 
-impl Sub for Vector3 {
-    type Output = Vector3;
-
-    #[inline]
-    fn sub(self, rhs: Self) -> Self::Output {
-        Vector3 {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-            z: self.z - rhs.z,
-        }
+    fn sub(self, rhs: Vec3) -> Vec3 {
+        (self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2)
     }
-}
 
-impl Add for Vector3 {
-    type Output = Vector3;
-
-    #[inline]
-    fn add(self, rhs: Self) -> Self::Output {
-        Vector3 {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-            z: self.z + rhs.z,
-        }
+    fn add(self, rhs: Vec3) -> Vec3 {
+        (self.0 + rhs.0, self.1 + rhs.1, self.2 + rhs.2)
     }
-}
 
-impl AddAssign for Vector3 {
-    #[inline]
-    fn add_assign(&mut self, rhs: Self) {
-        self.x += rhs.x;
-        self.y += rhs.y;
-        self.z += rhs.z;
+    fn add_assign(&mut self, rhs: Vec3) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+        self.2 += rhs.2;
     }
-}
 
-impl SubAssign for Vector3 {
-    #[inline]
-    fn sub_assign(&mut self, rhs: Self) {
-        self.x += rhs.x;
-        self.y += rhs.y;
-        self.z += rhs.z;
-    }
-}
-
-impl From<(f64, f64, f64)> for Vector3 {
-    #[inline]
-    fn from((x, y, z): (f64, f64, f64)) -> Self {
-        Vector3 { x, y, z }
-    }
-}
-
-impl From<Vector3> for (f64, f64, f64) {
-    fn from(Vector3 { x, y, z }: Vector3) -> (f64, f64, f64) {
-        (x, y, z)
+    fn sub_assign(&mut self, rhs: Vec3) {
+        self.0 -= rhs.0;
+        self.1 -= rhs.1;
+        self.2 -= rhs.2;
     }
 }

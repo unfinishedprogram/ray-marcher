@@ -1,14 +1,17 @@
-use crate::{angle::Angle, vector3::Vector3};
+use crate::{
+    angle::Angle,
+    vector3::{Vec3, Vector3},
+};
 
 pub type Quaternion = (f64, f64, f64, f64);
 
-pub fn get_rotation(angle: Angle, Vector3 { x, y, z }: Vector3) -> Quaternion {
+pub fn get_rotation(angle: Angle, (x, y, z): Vec3) -> Quaternion {
     let (sin_a, cos_a) = (angle.rad() / 2.0).sin_cos();
     (cos_a, sin_a * x, sin_a * y, sin_a * z)
 }
 
-pub fn rotation_from_to(from: Vector3, to: Vector3) -> Quaternion {
-    let Vector3 { x, y, z } = to.cross(from);
+pub fn rotation_from_to(from: Vec3, to: Vec3) -> Quaternion {
+    let (x, y, z) = to.cross(from);
     let w = (to.magnitude_sq() * from.magnitude_sq()).sqrt() + to.dot(from);
     normalize((w, x, y, z))
 }

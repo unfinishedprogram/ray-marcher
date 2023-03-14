@@ -1,8 +1,13 @@
-use crate::{angle::Angle, quaternion::Quaternion, ray::ViewRay, vector3::Vector3};
+use crate::{
+    angle::Angle,
+    quaternion::Quaternion,
+    ray::ViewRay,
+    vector3::{Vec3, Vector3},
+};
 
 pub struct Camera {
     pub fov: Angle,
-    pub position: Vector3,
+    pub position: Vec3,
     pub orientation: Quaternion,
     pub clip_plane: (f64, f64),
     // Vertical aspect is baseline: 16:9 = ~1.77
@@ -13,7 +18,7 @@ impl Camera {
     pub fn new(
         fov: Angle,
         aspect_ratio: f64,
-        position: impl Into<Vector3>,
+        position: impl Into<Vec3>,
         orientation: Quaternion,
         clip_plane: (f64, f64),
     ) -> Self {
@@ -34,16 +39,12 @@ impl Camera {
         let y = -y + 0.5;
         let x = (x - 0.5) * self.aspect_ratio;
 
-        let direction = Vector3 {
-            x,
-            y,
-            z: self.clip_plane.0,
-        }
-        .normalize()
-        .apply_rotation(self.orientation);
+        let direction = (x, y, self.clip_plane.0)
+            .normalize()
+            .apply_rotation(self.orientation);
 
-        // let direction: Vector3 =
-        //     Vector3::from((angle_x.rad().sin(), angle_y.rad().sin(), self.clip_plane.0))
+        // let direction: Vec3 =
+        //     Vec3::from((angle_x.rad().sin(), angle_y.rad().sin(), self.clip_plane.0))
         //         .apply_rotation(self.orientation)
         //         .normalize();
 

@@ -1,16 +1,16 @@
-use crate::vector3::Vector3;
+use crate::vector3::{Vec3, Vector3};
 
 pub struct ViewRay {
-    pub origin: Vector3,
-    pub position: Vector3,
-    pub orientation: Vector3,
+    pub origin: Vec3,
+    pub position: Vec3,
+    pub orientation: Vec3,
     pub steps: u32,
-    pub color: Vector3,
+    pub color: Vec3,
     pub clip: (f64, f64),
 }
 
 impl ViewRay {
-    pub fn new(origin: Vector3, orientation: Vector3, clip: (f64, f64)) -> Self {
+    pub fn new(origin: Vec3, orientation: Vec3, clip: (f64, f64)) -> Self {
         let origin = origin;
 
         Self {
@@ -18,19 +18,20 @@ impl ViewRay {
             position: origin,
             orientation,
             steps: 0,
-            color: Vector3::ZERO,
+            color: (0.0, 0.0, 0.0),
             clip,
         }
     }
 
     #[inline]
     pub fn len_sq(&self) -> f64 {
-        (self.origin - self.position).magnitude_sq()
+        (self.origin.sub(self.position)).magnitude_sq()
     }
 
     #[inline]
     pub fn step(&mut self, distance: f64) {
         self.steps += 1;
-        self.position += self.orientation.multiply_scalar(distance);
+        self.position
+            .add_assign(self.orientation.multiply_scalar(distance));
     }
 }

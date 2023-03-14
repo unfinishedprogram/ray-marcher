@@ -1,6 +1,4 @@
-use crate::{
-    camera::Camera, light::Light, signed_distance_field::SignedDistance, vector3::Vector3,
-};
+use crate::{camera::Camera, light::Light, signed_distance_field::SignedDistance, vector3::Vec3};
 
 pub struct Scene {
     pub camera: Camera,
@@ -36,7 +34,7 @@ impl SceneBuilder {
         self
     }
 
-    pub fn light(mut self, position: impl Into<Vector3>, color: impl Into<Vector3>) -> Self {
+    pub fn light(mut self, position: impl Into<Vec3>, color: impl Into<Vec3>) -> Self {
         self.lights.push(Light::new(position, color));
 
         self

@@ -6,8 +6,8 @@ pub use combine::*;
 pub use plane::Plane;
 pub use sphere::Sphere;
 
-use crate::vector3::Vector3;
+use crate::vector3::Vec3;
 
 pub trait SignedDistance: Sync {
-    fn distance_from(&self, position: Vector3) -> f64;
+    fn distance_from(&self, position: Vec3) -> f64;
 }

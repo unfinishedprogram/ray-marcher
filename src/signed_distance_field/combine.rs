@@ -7,7 +7,7 @@ pub enum Combine<A: SignedDistance, B: SignedDistance> {
 }
 
 impl<A: SignedDistance, B: SignedDistance> SignedDistance for Combine<A, B> {
-    fn distance_from(&self, position: crate::vector3::Vector3) -> f64 {
+    fn distance_from(&self, position: crate::vector3::Vec3) -> f64 {
         use Combine::*;
         let (a, b) = match self {
             Subtract(a, b) | Intersect(a, b) | Union(a, b) => {
