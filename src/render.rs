@@ -40,10 +40,14 @@ pub fn calculate_light(point: Vector3, normal: Vector3, scene: &Scene) -> Vector
     let mut lighting = Vector3::ZERO;
 
     for light in &scene.lights {
-        let light_direction = (light.position - point).normalize();
-        lighting += light
-            .color
-            .multiply_scalar(light_direction.dot(normal) + 0.5);
+        let light_delta = light.position - point;
+        let light_distance = light_delta.magnitude_sq();
+        let light_direction = light_delta.normalize();
+
+        let angle = light_direction.dot(normal);
+        let power = angle / light_distance;
+
+        lighting += light.color.multiply_scalar(power);
     }
 
     lighting

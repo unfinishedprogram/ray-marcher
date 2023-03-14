@@ -1,5 +1,12 @@
 pub fn smooth_step(min: f64, max: f64, x: f64) -> f64 {
-    x * x * (3.0 - 2.0 * x)
+    if x < min {
+        min
+    } else if x > max {
+        max
+    } else {
+        let x = (x - min) / (max - min);
+        x * x * (3.0 - 2.0 * x)
+    }
 }
 
 pub fn soft_clamp(x: f64, min: f64, max: f64) -> f64 {
