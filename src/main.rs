@@ -3,6 +3,7 @@ use crate::camera::Camera;
 mod angle;
 mod camera;
 mod light;
+mod material;
 mod quaternion;
 mod ray;
 mod render;
