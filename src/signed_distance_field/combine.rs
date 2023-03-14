@@ -1,4 +1,4 @@
-use crate::primitives::SignedDistance;
+use crate::signed_distance_field::SignedDistance;
 
 pub enum Combine<A: SignedDistance, B: SignedDistance> {
     Subtract(Box<A>, Box<B>),

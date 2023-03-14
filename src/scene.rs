@@ -1,4 +1,6 @@
-use crate::{camera::Camera, light::Light, primitives::SignedDistance, vector3::Vector3};
+use crate::{
+    camera::Camera, light::Light, signed_distance_field::SignedDistance, vector3::Vector3,
+};
 
 pub struct Scene {
     pub camera: Camera,

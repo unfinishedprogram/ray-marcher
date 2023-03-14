@@ -1,5 +1,10 @@
-pub mod plane;
-pub mod sphere;
+mod combine;
+mod plane;
+mod sphere;
+
+pub use combine::*;
+pub use plane::Plane;
+pub use sphere::Sphere;
 
 use crate::vector3::Vector3;
 

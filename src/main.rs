@@ -1,22 +1,20 @@
-use crate::{camera::Camera, primitives::sphere::Sphere};
+use crate::camera::Camera;
 
 mod angle;
 mod camera;
-mod combine;
 mod light;
-mod primitives;
-pub mod quaternion;
+mod quaternion;
 mod ray;
 mod render;
 mod scene;
+mod signed_distance_field;
 mod util;
 mod vector3;
 use angle::Angle;
-use combine::subtract;
-use primitives::plane::Plane;
 use quaternion::get_rotation;
 use render::render;
 use scene::SceneBuilder;
+use signed_distance_field::{subtract, Plane, Sphere};
 use vector3::Vector3;
 
 fn main() {
