@@ -1,5 +1,5 @@
 use image::RgbaImage;
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+use rayon::prelude::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use crate::{
     ray::ViewRay,
@@ -7,24 +7,22 @@ use crate::{
     vector3::{Vec3, Vector3},
 };
 
-pub fn render(scene: &Scene, (width, height): (u32, u32)) -> RgbaImage {
-    let mut image = RgbaImage::new(width, height);
+pub fn render(scene: &Scene, (width, height): (usize, usize)) -> RgbaImage {
+    let mut image = RgbaImage::new(width as u32, height as u32);
 
-    let colors: Vec<(u8, u8, u8)> = (0..(width as usize * height as usize))
+    let colors: Vec<(u8, u8, u8)> = (0..(width * height))
         .into_par_iter()
         .map(|index| {
-            let (x, y) = (index % width as usize, index / width as usize);
-
-            let ray = scene
+            let (x, y) = (index % width, index / width);
+            scene
                 .camera
-                .get_ray(x as f64 / width as f64, y as f64 / height as f64);
-
-            march(ray, scene).color.rgb_u8()
+                .get_ray(x as f64 / width as f64, y as f64 / height as f64)
         })
+        .map(|ray| march(ray, scene).color.rgb_u8())
         .collect();
 
     for (index, (r, g, b)) in colors.into_iter().enumerate() {
-        let (x, y) = (index % width as usize, index / width as usize);
+        let (x, y) = (index % width, index / width);
         image[(x as u32, y as u32)] = [r, g, b, 255].into();
     }
 
