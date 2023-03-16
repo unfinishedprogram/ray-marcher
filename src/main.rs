@@ -18,13 +18,30 @@ use material::Material;
 use quaternion::{get_rotation, rotation_from_to};
 use render::render;
 use scene::SceneBuilder;
-use signed_distance_field::{subtract, Plane, Sphere, Transform};
+use signed_distance_field::{subtract, union, Combine, Plane, Sphere, Transform};
 
 fn main() {
     let basic_white = Material::Basic((1.0, 1.0, 1.0));
 
+    let micky = union(
+        union(
+            Transform::translate(Sphere(0.5), (-0.6, 0.6, 0.0)),
+            Transform::translate(Sphere(0.5), (0.6, 0.6, 0.0)),
+        ),
+        Sphere(0.7),
+    );
+
     let floor = Entity::new(
-        Transform::translate(subtract(Plane, Sphere(1.0)), (0.0, -5.0, 0.0)),
+        Transform::translate(
+            subtract(
+                Plane,
+                Transform::rotate(
+                    micky,
+                    get_rotation(Angle::from_degrees(-90.0), (1.0, 0.0, 0.0)),
+                ),
+            ),
+            (0.0, -5.0, 0.0),
+        ),
         basic_white.clone(),
     );
 
