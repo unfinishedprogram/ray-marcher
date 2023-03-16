@@ -18,7 +18,7 @@ use material::Material;
 use quaternion::{get_rotation, rotation_from_to};
 use render::render;
 use scene::SceneBuilder;
-use signed_distance_field::{subtract, union, Plane, Sphere, Transform};
+use signed_distance_field::{subtract, union, Plane, Sphere, Torus, Transform};
 
 fn main() {
     let basic_white = Material::Basic((1.0, 1.0, 1.0));
@@ -69,6 +69,15 @@ fn main() {
             Transform::translate(Sphere(0.5), (0.0, 0.0, 0.0)),
             Transform::translate(Sphere(0.5), (-0.5, 0.0, -0.5)),
         ),
+        basic_white.clone(),
+    );
+
+    let ring = Entity::new(
+        Transform::new(
+            Torus(0.5, 0.25),
+            (0.0, -1.0, 0.0),
+            get_rotation(Angle::from_degrees(-45.0), (1.0, 0.0, 0.0)),
+        ),
         basic_white,
     );
 
@@ -84,6 +93,7 @@ fn main() {
     .add(cutout)
     .add(sphere_1)
     .add(sphere_2)
+    .add(ring)
     .light((2.0, -3.0, 0.0), (0.5, 0.5, 4.0))
     .light((0.0, -3.0, 0.0), (4.0, 0.5, 0.5))
     .light((-2.0, -3.0, 0.0), (0.5, 4.0, 0.5))
