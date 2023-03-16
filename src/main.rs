@@ -18,7 +18,7 @@ use material::Material;
 use quaternion::{get_rotation, rotation_from_to};
 use render::render;
 use scene::SceneBuilder;
-use signed_distance_field::{subtract, union, Combine, Plane, Sphere, Transform};
+use signed_distance_field::{subtract, union, Plane, Sphere, Transform};
 
 fn main() {
     let basic_white = Material::Basic((1.0, 1.0, 1.0));
@@ -37,7 +37,7 @@ fn main() {
                 Plane,
                 Transform::rotate(
                     micky,
-                    get_rotation(Angle::from_degrees(-90.0), (1.0, 0.0, 0.0)),
+                    get_rotation(Angle::from_degrees(90.0), (1.0, 0.0, 0.0)),
                 ),
             ),
             (0.0, -5.0, 0.0),
@@ -49,7 +49,7 @@ fn main() {
         Transform::new(
             Plane,
             (0.0, 0.0, 5.0),
-            rotation_from_to((0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
+            rotation_from_to((0.0, 1.0, 0.0), (0.0, 0.0, -1.0)),
         ),
         basic_white.clone(),
     );

@@ -1,5 +1,5 @@
 use crate::{
-    quaternion::{unit_quaternion, Quaternion},
+    quaternion::{unit_quaternion, Quat, Quaternion},
     vector3::{Vec3, Vector3},
 };
 
@@ -39,7 +39,10 @@ impl<T: SignedDistance> Transform<T> {
 
 impl<T: SignedDistance> SignedDistance for Transform<T> {
     fn distance_from(&self, point: Vec3) -> f64 {
-        self.signed_distance
-            .distance_from(point.sub(self.translation).apply_rotation(self.rotation))
+        self.signed_distance.distance_from(
+            point
+                .sub(self.translation)
+                .apply_rotation(self.rotation.inverse()),
+        )
     }
 }

@@ -4,6 +4,34 @@ use crate::{
 };
 
 pub type Quaternion = (f64, f64, f64, f64);
+pub trait Quat {
+    fn magnitude_sq(self) -> f64;
+    fn inverse(self) -> Quaternion;
+    fn multiply_scalar(self, scalar: f64) -> Quaternion;
+}
+
+impl Quat for Quaternion {
+    fn magnitude_sq(self) -> f64 {
+        let (a, b, c, d) = self;
+        a * a + b * b + c * c + d * d
+    }
+
+    fn inverse(self) -> Quaternion {
+        let (a, b, c, d) = self;
+        let conjugate = (a, -b, -c, -d);
+        let magnitude = self.magnitude_sq();
+        conjugate.multiply_scalar(1.0 / magnitude)
+    }
+
+    fn multiply_scalar(self, scalar: f64) -> Quaternion {
+        (
+            self.0 * scalar,
+            self.1 * scalar,
+            self.2 * scalar,
+            self.3 * scalar,
+        )
+    }
+}
 
 pub fn unit_quaternion() -> Quaternion {
     (1.0, 0.0, 0.0, 0.0)
