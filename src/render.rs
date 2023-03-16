@@ -2,6 +2,7 @@ use image::RgbaImage;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
 use crate::{
+    light::Light,
     material::Material,
     ray::ViewRay,
     scene::Scene,
@@ -30,6 +31,32 @@ pub fn render(scene: &Scene, (width, height): (usize, usize)) -> RgbaImage {
     image
 }
 
+pub fn trace_shadow_ray(point: Vec3, scene: &Scene, light: &Light) -> f64 {
+    let light_distance_sq = light.position.sub(point).magnitude_sq();
+    let normal = calculate_normal(point, scene);
+
+    let mut ray = ViewRay::new(
+        point.add(normal.multiply_scalar(0.01)),
+        light.position.sub(point).normalize(),
+        (0.0, 0.0),
+    );
+    loop {
+        let ray_length = ray.len_sq();
+
+        let steps = ray.steps as u8;
+        let distance = scene.query_entities(ray.position).distance;
+
+        // Hit object
+        if distance <= 0.000001 || ray_length > 1000.0 * 1000.0 || steps == 50 {
+            return 0.0;
+        } else if ray_length >= light_distance_sq {
+            return 1.0;
+        }
+
+        ray.step(distance);
+    }
+}
+
 pub fn calculate_light(point: Vec3, normal: Vec3, scene: &Scene) -> Vec3 {
     let mut lighting = (0.0, 0.0, 0.0);
 
@@ -39,8 +66,9 @@ pub fn calculate_light(point: Vec3, normal: Vec3, scene: &Scene) -> Vec3 {
         let light_direction = light_delta.normalize();
 
         let angle = light_direction.dot(normal).max(0.0);
-        let power = angle / light_distance;
+        let mut power = angle / light_distance;
 
+        power *= trace_shadow_ray(point, scene, light);
         lighting.add_assign(light.color.multiply_scalar(power));
     }
 

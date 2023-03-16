@@ -75,8 +75,8 @@ fn main() {
     let ring = Entity::new(
         Transform::new(
             Torus(0.5, 0.25),
-            (0.0, -1.0, 0.0),
-            get_rotation(Angle::from_degrees(-45.0), (1.0, 0.0, 0.0)),
+            (0.0, -4.0, 0.0),
+            get_rotation(Angle::from_degrees(0.0), (1.0, 0.0, 0.0)),
         ),
         basic_white,
     );
