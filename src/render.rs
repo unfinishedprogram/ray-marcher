@@ -1,7 +1,8 @@
 use image::RgbaImage;
-use rayon::prelude::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
 use crate::{
+    material::Material,
     ray::ViewRay,
     scene::Scene,
     vector3::{Vec3, Vector3},
@@ -29,15 +30,6 @@ pub fn render(scene: &Scene, (width, height): (usize, usize)) -> RgbaImage {
     image
 }
 
-pub fn signed_distance(point: Vec3, scene: &Scene) -> f64 {
-    scene
-        .entities
-        .iter()
-        .map(|entity| entity.distance_from(point))
-        .reduce(f64::min)
-        .unwrap_or_default()
-}
-
 pub fn calculate_light(point: Vec3, normal: Vec3, scene: &Scene) -> Vec3 {
     let mut lighting = (0.0, 0.0, 0.0);
 
@@ -46,7 +38,7 @@ pub fn calculate_light(point: Vec3, normal: Vec3, scene: &Scene) -> Vec3 {
         let light_distance = light_delta.magnitude_sq();
         let light_direction = light_delta.normalize();
 
-        let angle = light_direction.dot(normal);
+        let angle = light_direction.dot(normal).max(0.0);
         let power = angle / light_distance;
 
         lighting.add_assign(light.color.multiply_scalar(power));
@@ -54,18 +46,17 @@ pub fn calculate_light(point: Vec3, normal: Vec3, scene: &Scene) -> Vec3 {
 
     lighting
 }
+
 pub fn calculate_normal(point: Vec3, scene: &Scene) -> Vec3 {
     let small_step_x = (0.000001, 0.0, 0.0);
     let small_step_y = (0.0, 0.000001, 0.0);
     let small_step_z = (0.0, 0.0, 0.000001);
+    let entity = scene.query_entities(point).entity;
 
     (
-        signed_distance(point.add(small_step_x), scene)
-            - signed_distance(point.sub(small_step_x), scene),
-        signed_distance(point.add(small_step_y), scene)
-            - signed_distance(point.sub(small_step_y), scene),
-        signed_distance(point.add(small_step_z), scene)
-            - signed_distance(point.sub(small_step_z), scene),
+        entity.distance(point.add(small_step_x)) - entity.distance(point.sub(small_step_x)),
+        entity.distance(point.add(small_step_y)) - entity.distance(point.sub(small_step_y)),
+        entity.distance(point.add(small_step_z)) - entity.distance(point.sub(small_step_z)),
     )
         .normalize()
 }
@@ -75,18 +66,24 @@ pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
         let ray_length = ray.len_sq();
 
         let steps = ray.steps as u8;
-        let signed_distance = signed_distance(ray.position, scene);
+        let distance = scene.query_entities(ray.position).distance;
 
         // Hit object
-        if signed_distance <= 0.000001 || ray_length > 1000.0 * 1000.0 || steps == 255 {
+        if distance <= 0.000001 || ray_length > 1000.0 * 1000.0 || steps == 255 {
             break;
         }
 
-        ray.step(signed_distance);
+        ray.step(distance);
     }
 
     let surface_normal = calculate_normal(ray.position, scene);
-    ray.color = calculate_light(ray.position, surface_normal, scene);
+    let surface_material = &scene.query_entities(ray.position).entity.material;
+
+    ray.color = match surface_material {
+        Material::Basic(color) => {
+            calculate_light(ray.position, surface_normal, scene).channel_multiply(*color)
+        }
+    };
 
     ray
 }

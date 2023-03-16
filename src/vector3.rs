@@ -25,6 +25,7 @@ pub trait Vector3 {
     fn rgb_u8(self) -> (u8, u8, u8);
     fn sub(self, rhs: Vec3) -> Vec3;
     fn add(self, rhs: Self) -> Vec3;
+    fn channel_multiply(self, rhs: Vec3) -> Vec3;
     fn add_assign(&mut self, rhs: Vec3);
     fn sub_assign(&mut self, rhs: Vec3);
 }
@@ -83,6 +84,12 @@ impl Vector3 for Vec3 {
         } else {
             self
         }
+    }
+
+    fn channel_multiply(self, rhs: Vec3) -> Vec3 {
+        let (x1, y1, z1) = self;
+        let (x2, y2, z2) = rhs;
+        (x1 * x2, y1 * y2, z1 * z2)
     }
 
     fn rotate_xyz(self, other: Vec3) -> Vec3 {

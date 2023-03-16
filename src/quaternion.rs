@@ -5,6 +5,10 @@ use crate::{
 
 pub type Quaternion = (f64, f64, f64, f64);
 
+pub fn unit_quaternion() -> Quaternion {
+    (1.0, 0.0, 0.0, 0.0)
+}
+
 pub fn get_rotation(angle: Angle, (x, y, z): Vec3) -> Quaternion {
     let (sin_a, cos_a) = (angle.rad() / 2.0).sin_cos();
     (cos_a, sin_a * x, sin_a * y, sin_a * z)
