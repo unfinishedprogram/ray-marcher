@@ -82,7 +82,7 @@ fn main() {
     );
 
     let scene = SceneBuilder::new(Camera::new(
-        Angle::from_degrees(60.0),
+        Angle::from_degrees(30.0),
         16.0 / 9.0,
         (0.0, 0.0, -10.0),
         get_rotation(Angle::from_degrees(20.0), (1.0, 0.0, 0.0)),

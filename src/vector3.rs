@@ -56,17 +56,16 @@ impl Vector3 for Vec3 {
     }
 
     fn apply_rotation(self, r: Quaternion) -> Vec3 {
-        if r.is_identity() {
-            return self;
-        }
+        let r = r.inverse();
+        let v = self;
+        let (s, x, y, z) = r;
+        let u = (x, y, z);
 
-        let (x, y, z) = self;
-        let p = (0.0, x, y, z);
-        let r_prime = (r.0, -r.1, -r.2, -r.3);
+        let a = u.multiply_scalar(u.dot(v) * 2.0);
+        let b = v.multiply_scalar((s * s) - u.dot(u));
+        let c = u.cross(v).multiply_scalar(2.0 * s);
 
-        let (_, x, y, z) = hamilton_product(hamilton_product(r, p), r_prime);
-
-        (x, y, z)
+        a.add(b).add(c)
     }
 
     #[inline]
