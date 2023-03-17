@@ -1,6 +1,6 @@
 use crate::{
     angle::Angle,
-    quaternion::{self, hamilton_product, Quaternion},
+    quaternion::{self, hamilton_product, Quat, Quaternion},
     util::interpolation::soft_clamp,
 };
 
@@ -56,6 +56,10 @@ impl Vector3 for Vec3 {
     }
 
     fn apply_rotation(self, r: Quaternion) -> Vec3 {
+        if r.is_identity() {
+            return self;
+        }
+
         let (x, y, z) = self;
         let p = (0.0, x, y, z);
         let r_prime = (r.0, -r.1, -r.2, -r.3);
