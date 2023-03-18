@@ -56,7 +56,8 @@ pub fn rotation_from_to(from: Vec3, to: Vec3) -> Quaternion {
 
 pub fn normalize((a, b, c, d): Quaternion) -> Quaternion {
     let magnitude = (a * a + b * b + c * c + d * d).sqrt();
-    (a / magnitude, b / magnitude, c / magnitude, d / magnitude)
+    let mul = 1.0 / magnitude;
+    (a * mul, b * mul, c * mul, d * mul)
 }
 
 pub fn hamilton_product(a: Quaternion, b: Quaternion) -> Quaternion {

@@ -1,14 +1,19 @@
-use crate::{camera::Camera, entity::Entity, light::Light, vector3::Vec3};
+use crate::{
+    camera::Camera,
+    entity::{BasicEntity, Entity},
+    light::Light,
+    vector3::Vec3,
+};
 
 pub struct Scene {
     pub camera: Camera,
-    pub entities: Vec<Entity>,
+    pub entities: Vec<Box<dyn Entity>>,
     pub lights: Vec<Light>,
 }
 
 pub struct SceneBuilder {
     camera: Camera,
-    entities: Vec<Entity>,
+    entities: Vec<Box<dyn Entity>>,
     lights: Vec<Light>,
 }
 
@@ -29,8 +34,8 @@ impl SceneBuilder {
         }
     }
 
-    pub fn add(mut self, entity: Entity) -> Self {
-        self.entities.push(entity);
+    pub fn add(mut self, entity: impl Entity + 'static) -> Self {
+        self.entities.push(Box::new(entity));
         self
     }
 
@@ -41,7 +46,7 @@ impl SceneBuilder {
 }
 
 pub struct SceneQueryResult<'a> {
-    pub entity: &'a Entity,
+    pub entity: &'a Box<dyn Entity>,
     pub distance: f64,
 }
 
@@ -51,13 +56,13 @@ impl Scene {
             .iter()
             .map(|entity| SceneQueryResult {
                 entity,
-                distance: entity.signed_distance.distance_from(point),
+                distance: entity.distance(point),
             })
             .min_by(|a, b| {
                 a.distance
                     .partial_cmp(&b.distance)
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .expect("No entities in scene")
+            .unwrap()
     }
 }

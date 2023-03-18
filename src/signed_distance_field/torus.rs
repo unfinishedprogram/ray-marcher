@@ -3,6 +3,7 @@ use super::SignedDistance;
 pub struct Torus(pub f64, pub f64);
 
 impl SignedDistance for Torus {
+    #[inline]
     fn distance_from(&self, position: crate::vector3::Vec3) -> f64 {
         let (px, py, pz) = position;
 

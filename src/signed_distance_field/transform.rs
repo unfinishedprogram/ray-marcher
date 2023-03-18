@@ -45,6 +45,7 @@ impl<T: SignedDistance> Transform<T> {
 }
 
 impl<T: SignedDistance> SignedDistance for Transform<T> {
+    #[inline]
     fn distance_from(&self, point: Vec3) -> f64 {
         self.signed_distance.distance_from(
             point
