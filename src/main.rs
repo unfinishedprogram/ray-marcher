@@ -18,7 +18,7 @@ use material::Material;
 use quaternion::{get_rotation, rotation_from_to};
 use render::render;
 use scene::SceneBuilder;
-use signed_distance_field::{subtract, union, Plane, Sphere, Torus, Transform};
+use signed_distance_field::{subtract, union, Primitive::*, Transform};
 
 fn main() {
     let basic_white = Material::Basic((1.0, 1.0, 1.0));
