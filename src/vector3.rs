@@ -1,10 +1,14 @@
 use crate::{
     angle::Angle,
-    quaternion::{self, hamilton_product, Quat, Quaternion},
+    quaternion::{self, Quat, Quaternion},
     util::interpolation::soft_clamp,
 };
 
 pub type Vec3 = (f64, f64, f64);
+
+pub const X: Vec3 = (1.0, 0.0, 0.0);
+pub const Y: Vec3 = (0.0, 1.0, 0.0);
+pub const Z: Vec3 = (0.0, 0.0, 1.0);
 
 pub trait Vector3 {
     const ZERO: Vec3 = (0.0, 0.0, 0.0);

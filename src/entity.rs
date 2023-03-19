@@ -7,10 +7,20 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn new(signed_distance: impl SignedDistance + 'static, material: Material) -> Self {
+    pub fn with_material(
+        signed_distance: impl SignedDistance + 'static,
+        material: Material,
+    ) -> Self {
         Self {
             signed_distance: Box::new(signed_distance),
             material,
+        }
+    }
+
+    pub fn new(signed_distance: impl SignedDistance + 'static) -> Self {
+        Self {
+            signed_distance: Box::new(signed_distance),
+            material: Material::Basic((1.0, 1.0, 1.0)),
         }
     }
 

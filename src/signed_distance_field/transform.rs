@@ -1,57 +1,25 @@
 use crate::{
-    quaternion::{identity_quaternion, Quat, Quaternion},
+    quaternion::{Quat, Quaternion},
     vector3::{Vec3, Vector3},
 };
 
 use super::SignedDistance;
+#[derive(Clone)]
+pub struct Rotation<T: SignedDistance + Sized>(pub Box<T>, pub Quaternion);
 
 #[derive(Clone)]
-pub struct Transform<T: SignedDistance> {
-    pub rotation: Quaternion,
-    inverse_rotation: Quaternion,
-    pub translation: Vec3,
-    pub signed_distance: Box<T>,
-}
+pub struct Translation<T: SignedDistance>(pub Box<T>, pub Vec3);
 
-impl<T: SignedDistance> Transform<T> {
-    pub fn new(signed_distance: T, translation: Vec3, rotation: Quaternion) -> Self {
-        let inverse_rotation = rotation.inverse();
-        Self {
-            signed_distance: Box::new(signed_distance),
-            rotation,
-            translation,
-            inverse_rotation,
-        }
-    }
-
-    pub fn translate(signed_distance: T, translation: Vec3) -> Self {
-        let inverse_rotation = identity_quaternion().inverse();
-        Self {
-            signed_distance: Box::new(signed_distance),
-            rotation: identity_quaternion(),
-            translation,
-            inverse_rotation,
-        }
-    }
-
-    pub fn rotate(signed_distance: T, rotation: Quaternion) -> Self {
-        let inverse_rotation = rotation.inverse();
-        Self {
-            signed_distance: Box::new(signed_distance),
-            rotation,
-            translation: (0.0, 0.0, 0.0),
-            inverse_rotation,
-        }
-    }
-}
-
-impl<T: SignedDistance> SignedDistance for Transform<T> {
+impl<T: SignedDistance> SignedDistance for Rotation<T> {
     #[inline]
     fn distance_from(&self, point: Vec3) -> f64 {
-        self.signed_distance.distance_from(
-            point
-                .sub(self.translation)
-                .apply_rotation(self.inverse_rotation),
-        )
+        self.0.distance_from(point.apply_rotation(self.1.inverse()))
+    }
+}
+
+impl<T: SignedDistance> SignedDistance for Translation<T> {
+    #[inline]
+    fn distance_from(&self, point: Vec3) -> f64 {
+        self.0.distance_from(point.sub(self.1))
     }
 }

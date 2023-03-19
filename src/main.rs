@@ -14,71 +14,47 @@ mod util;
 mod vector3;
 use angle::Angle;
 use entity::Entity;
-use material::Material;
 use quaternion::{get_rotation, rotation_from_to};
 use render::render;
 use scene::SceneBuilder;
-use signed_distance_field::{subtract, union, Primitive::*, Transform};
+use signed_distance_field::{subtract, union, Primitive::*, SignedDistance};
+use vector3::{X, Y, Z};
 
 fn main() {
-    let basic_white = Material::Basic((1.0, 1.0, 1.0));
-
     let micky = union(
-        union(
-            Transform::translate(Sphere(0.5), (-0.6, 0.6, 0.0)),
-            Transform::translate(Sphere(0.5), (0.6, 0.6, 0.0)),
-        ),
+        union(Sphere(0.5).translate_x(-0.6), Sphere(0.5).translate_x(0.6)).translate_y(0.6),
         Sphere(0.7),
     );
 
     let floor = Entity::new(
-        Transform::translate(
-            subtract(
-                Plane,
-                Transform::rotate(
-                    micky,
-                    get_rotation(Angle::from_degrees(90.0), (1.0, 0.0, 0.0)),
-                ),
-            ),
-            (0.0, -5.0, 0.0),
-        ),
-        basic_white.clone(),
+        subtract(
+            Plane,
+            micky.rotate(get_rotation(Angle::from_degrees(90.0), X)),
+        )
+        .translate((0.0, -5.0, 0.0)),
     );
+
+    let ball_good = Sphere(1.0)
+        .translate_x(5.0)
+        .translate_y(0.5)
+        .translate_z(1.0);
+
+    let ball_bad = Sphere(1.0).translate((5.0, 0.5, 1.0));
 
     let wall = Entity::new(
-        Transform::new(
-            Plane,
-            (0.0, 0.0, 5.0),
-            rotation_from_to((0.0, 1.0, 0.0), (0.0, 0.0, -1.0)),
-        ),
-        basic_white.clone(),
+        Plane
+            .rotate(rotation_from_to((0.0, 1.0, 0.0), (0.0, 0.0, -1.0)))
+            .translate((0.0, 0.0, 5.0)),
     );
 
-    let sphere_1 = Entity::new(
-        Transform::translate(Sphere(0.5), (-3.0, 0.0, 0.0)),
-        basic_white.clone(),
-    );
-
-    let sphere_2 = Entity::new(
-        Transform::translate(Sphere(0.5), (3.0, 0.0, 0.0)),
-        basic_white.clone(),
-    );
-
-    let cutout = Entity::new(
-        subtract(
-            Transform::translate(Sphere(0.5), (0.0, 0.0, 0.0)),
-            Transform::translate(Sphere(0.5), (-0.5, 0.0, -0.5)),
-        ),
-        basic_white.clone(),
-    );
+    let sphere_1 = Entity::new(Sphere(0.5).translate((-3.0, 0.0, 0.0)));
+    let sphere_2 = Entity::new(Sphere(0.5).translate((3.0, 0.0, 0.0)));
+    let cutout = Entity::new(subtract(Sphere(0.5), Torus(0.5, 0.25)));
 
     let ring = Entity::new(
-        Transform::new(
-            Torus(0.5, 0.25),
-            (0.0, -4.0, 0.0),
-            get_rotation(Angle::from_degrees(0.0), (1.0, 0.0, 0.0)),
-        ),
-        basic_white,
+        Torus(0.5, 0.25)
+            .rotate(get_rotation(Angle::from_degrees(0.0), (1.0, 0.0, 0.0)))
+            .translate((0.0, -4.0, 0.0)),
     );
 
     let scene = SceneBuilder::new(Camera::new(
