@@ -1,19 +1,14 @@
-use crate::{
-    camera::Camera,
-    entity::{BasicEntity, Entity},
-    light::Light,
-    vector3::Vec3,
-};
+use crate::{camera::Camera, entity::Entity, light::Light, vector3::Vec3};
 
 pub struct Scene {
     pub camera: Camera,
-    pub entities: Vec<Box<dyn Entity>>,
+    pub entities: Vec<Entity>,
     pub lights: Vec<Light>,
 }
 
 pub struct SceneBuilder {
     camera: Camera,
-    entities: Vec<Box<dyn Entity>>,
+    entities: Vec<Entity>,
     lights: Vec<Light>,
 }
 
@@ -34,8 +29,8 @@ impl SceneBuilder {
         }
     }
 
-    pub fn add(mut self, entity: impl Entity + 'static) -> Self {
-        self.entities.push(Box::new(entity));
+    pub fn add(mut self, entity: Entity) -> Self {
+        self.entities.push(entity);
         self
     }
 
@@ -46,7 +41,7 @@ impl SceneBuilder {
 }
 
 pub struct SceneQueryResult<'a> {
-    pub entity: &'a Box<dyn Entity>,
+    pub entity: &'a Entity,
     pub distance: f64,
 }
 

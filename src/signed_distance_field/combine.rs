@@ -1,5 +1,6 @@
 use crate::signed_distance_field::SignedDistance;
 
+#[derive(Clone)]
 pub enum Combine<A: SignedDistance, B: SignedDistance> {
     Subtract(Box<A>, Box<B>),
     Intersect(Box<A>, Box<B>),

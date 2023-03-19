@@ -1,5 +1,6 @@
 use super::SignedDistance;
 
+#[derive(Clone)]
 pub struct Torus(pub f64, pub f64);
 
 impl SignedDistance for Torus {

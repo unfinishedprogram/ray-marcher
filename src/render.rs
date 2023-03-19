@@ -112,7 +112,7 @@ pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
     }
 
     let surface_normal = calculate_normal(ray.position, scene);
-    let surface_material = &scene.query_entities(ray.position).entity.get_material();
+    let surface_material = &scene.query_entities(ray.position).entity.material;
 
     ray.color = match surface_material {
         Material::Basic(color) => {

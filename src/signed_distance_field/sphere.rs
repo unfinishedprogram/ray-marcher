@@ -1,6 +1,7 @@
 use super::SignedDistance;
 use crate::vector3::{Vec3, Vector3};
 
+#[derive(Clone)]
 pub struct Sphere(pub f64);
 
 impl SignedDistance for Sphere {

@@ -13,7 +13,7 @@ mod signed_distance_field;
 mod util;
 mod vector3;
 use angle::Angle;
-use entity::BasicEntity;
+use entity::Entity;
 use material::Material;
 use quaternion::{get_rotation, rotation_from_to};
 use render::render;
@@ -31,7 +31,7 @@ fn main() {
         Sphere(0.7),
     );
 
-    let floor = BasicEntity::new(
+    let floor = Entity::new(
         Transform::translate(
             subtract(
                 Plane,
@@ -45,7 +45,7 @@ fn main() {
         basic_white.clone(),
     );
 
-    let wall = BasicEntity::new(
+    let wall = Entity::new(
         Transform::new(
             Plane,
             (0.0, 0.0, 5.0),
@@ -54,17 +54,17 @@ fn main() {
         basic_white.clone(),
     );
 
-    let sphere_1 = BasicEntity::new(
+    let sphere_1 = Entity::new(
         Transform::translate(Sphere(0.5), (-3.0, 0.0, 0.0)),
         basic_white.clone(),
     );
 
-    let sphere_2 = BasicEntity::new(
+    let sphere_2 = Entity::new(
         Transform::translate(Sphere(0.5), (3.0, 0.0, 0.0)),
         basic_white.clone(),
     );
 
-    let cutout = BasicEntity::new(
+    let cutout = Entity::new(
         subtract(
             Transform::translate(Sphere(0.5), (0.0, 0.0, 0.0)),
             Transform::translate(Sphere(0.5), (-0.5, 0.0, -0.5)),
@@ -72,7 +72,7 @@ fn main() {
         basic_white.clone(),
     );
 
-    let ring = BasicEntity::new(
+    let ring = Entity::new(
         Transform::new(
             Torus(0.5, 0.25),
             (0.0, -4.0, 0.0),

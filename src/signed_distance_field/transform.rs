@@ -5,6 +5,7 @@ use crate::{
 
 use super::SignedDistance;
 
+#[derive(Clone)]
 pub struct Transform<T: SignedDistance> {
     pub rotation: Quaternion,
     inverse_rotation: Quaternion,
