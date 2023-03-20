@@ -32,6 +32,7 @@ pub trait Vector3 {
     fn channel_multiply(self, rhs: Vec3) -> Vec3;
     fn add_assign(&mut self, rhs: Vec3);
     fn sub_assign(&mut self, rhs: Vec3);
+    fn max(self, max: f64) -> f64;
 }
 
 impl Vector3 for Vec3 {
@@ -133,5 +134,9 @@ impl Vector3 for Vec3 {
         self.0 -= rhs.0;
         self.1 -= rhs.1;
         self.2 -= rhs.2;
+    }
+
+    fn max(self, max: f64) -> f64 {
+        self.0.max(self.1).max(self.2).max(max)
     }
 }

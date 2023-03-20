@@ -70,7 +70,6 @@ pub fn calculate_light(point: Vec3, normal: Vec3, scene: &Scene) -> Vec3 {
 
         let angle = light_direction.dot(normal).max(0.0);
         let mut power = angle / light_distance;
-
         // Only do expensive shadow tracing if not trivially obscured
         if angle != 0.0 {
             power *= trace_shadow_ray(point, scene, light);
