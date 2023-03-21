@@ -20,7 +20,9 @@ impl Entity {
     pub fn new(signed_distance: impl SignedDistance + 'static) -> Self {
         Self {
             signed_distance: Box::new(signed_distance),
-            material: Material::Basic((1.0, 1.0, 1.0)),
+            material: Material {
+                albedo: (1.0, 1.0, 1.0),
+            },
         }
     }
 

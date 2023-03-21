@@ -1,7 +1,6 @@
 use crate::{
     angle::Angle,
     quaternion::Quaternion,
-    ray::ViewRay,
     vector3::{Vec3, Vector3},
 };
 
@@ -30,15 +29,12 @@ impl Camera {
         }
     }
 
-    // Gets a ray given UV coordinates
-    pub fn get_ray(&self, x: f64, y: f64) -> ViewRay {
+    pub fn get_ray_direction(&self, x: f64, y: f64) -> Vec3 {
         let y = -y + 0.5;
         let x = (x - 0.5) * self.aspect_ratio;
 
-        let direction = (x, y, self.clip_plane.0)
+        (x, y, self.clip_plane.0)
             .normalize()
-            .apply_rotation(self.orientation);
-
-        ViewRay::new(self.position, direction, self.clip_plane)
+            .apply_rotation(self.orientation)
     }
 }

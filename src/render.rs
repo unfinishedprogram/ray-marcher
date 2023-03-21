@@ -1,27 +1,97 @@
 use image::RgbaImage;
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+use rayon::prelude::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use crate::{
     light::Light,
-    material::Material,
-    ray::ViewRay,
     scene::Scene,
     vector3::{Vec3, Vector3},
 };
 
-pub fn render(scene: &Scene, (width, height): (usize, usize)) -> RgbaImage {
-    let mut image = RgbaImage::new(width as u32, height as u32);
-
-    let colors: Vec<(u8, u8, u8)> = (0..(width * height))
+fn get_ray_normal_buffer(scene: &Scene, (width, height): (usize, usize)) -> Vec<Vec3> {
+    (0..(width * height))
         .into_par_iter()
         .map(|index| {
             let (x, y) = (index % width, index / width);
-            scene
-                .camera
-                .get_ray(x as f64 / width as f64, y as f64 / height as f64)
+            let (x, y, width, height) = (x as f64, y as f64, width as f64, height as f64);
+            scene.camera.get_ray_direction(x / width, y / height)
         })
-        .map(|ray| march(ray, scene).color.rgb_u8())
-        .collect();
+        .collect()
+}
+
+fn get_surface_buffer(scene: &Scene, camera_rays: &Vec<Vec3>) -> Vec<Vec3> {
+    camera_rays
+        .into_par_iter()
+        .map(|ray_dir| {
+            let mut ray_pos = scene.camera.position;
+            let mut step = 0;
+            let mut len = 0.0;
+
+            loop {
+                let min_distance = scene.query_entities(ray_pos).distance;
+                let epsilon = 0.00001;
+
+                if min_distance <= epsilon || len > 1000.0 * 1000.0 || step == 512 {
+                    break;
+                }
+
+                ray_pos.add_assign(ray_dir.multiply_scalar(min_distance));
+                len += min_distance;
+                step += 1;
+            }
+            ray_pos
+        })
+        .collect()
+}
+
+fn get_normal_buffer(scene: &Scene, surface: &Vec<Vec3>) -> Vec<Vec3> {
+    surface
+        .into_par_iter()
+        .map(|&point| calculate_normal(point, scene))
+        .collect()
+}
+
+fn get_light_buffer(scene: &Scene, surface: &Vec<Vec3>, normal: &Vec<Vec3>) -> Vec<Vec3> {
+    surface
+        .into_par_iter()
+        .zip(normal.into_par_iter())
+        .map(|(&point, &normal)| {
+            let mut lighting = (0.0, 0.0, 0.0);
+            for light in &scene.lights {
+                let light_delta = light.position.sub(point);
+                let light_distance = light_delta.magnitude_sq();
+                let light_direction = light_delta.normalize();
+
+                let angle = light_direction.dot(normal).max(0.0);
+                let mut power = angle / light_distance;
+                // Only do expensive shadow tracing if not trivially obscured
+                if angle != 0.0 {
+                    power *= trace_shadow_ray(scene, point, light);
+                }
+
+                lighting.add_assign(light.color.multiply_scalar(power));
+            }
+            lighting
+        })
+        .collect()
+}
+
+fn get_albedo_buffer(scene: &Scene, surface: &Vec<Vec3>) -> Vec<Vec3> {
+    surface
+        .into_par_iter()
+        .map(|&point| scene.query_entities(point).entity.material.albedo)
+        .collect()
+}
+
+pub fn render(scene: &Scene, (width, height): (usize, usize)) -> RgbaImage {
+    let mut image = RgbaImage::new(width as u32, height as u32);
+
+    let camera_rays = get_ray_normal_buffer(scene, (width, height));
+    let surface = get_surface_buffer(scene, &camera_rays);
+    let normals = get_normal_buffer(scene, &surface);
+    let colors = get_light_buffer(scene, &surface, &normals);
+    // let albedo = get_albedo_buffer(scene, &surface);
+
+    let colors: Vec<_> = colors.into_par_iter().map(|c| c.rgb_u8()).collect();
 
     for (index, (r, g, b)) in colors.into_iter().enumerate() {
         let (x, y) = (index % width, index / width);
@@ -31,57 +101,31 @@ pub fn render(scene: &Scene, (width, height): (usize, usize)) -> RgbaImage {
     image
 }
 
-pub fn trace_shadow_ray(point: Vec3, scene: &Scene, light: &Light) -> f64 {
-    let light_distance_sq = light.position.sub(point).magnitude_sq();
-    let normal = calculate_normal(point, scene);
+pub fn trace_shadow_ray(scene: &Scene, point: Vec3, light: &Light) -> f64 {
+    let max_t = light.position.sub(point).magnitude();
+    let normal = light.position.sub(point).normalize();
+    let mut res: f64 = 1.0;
+    let mut t = 0.00001;
 
-    let cam_dist = point.sub(scene.camera.position).magnitude_sq();
-    let epsilon = cam_dist.max(0.1) / 100000.0;
+    for _ in 0..255 {
+        let h = scene
+            .query_entities(point.add(normal.multiply_scalar(t)))
+            .distance;
 
-    let mut ray = ViewRay::new(
-        point.add(normal.multiply_scalar(epsilon)),
-        light.position.sub(point).normalize(),
-        (0.0, 0.0),
-    );
+        res = res.min(h / (light.radius * t));
+        t += h.max(0.005);
 
-    loop {
-        let ray_length = ray.len_sq();
-
-        let steps = ray.steps as u8;
-        let distance = scene.query_entities(ray.position).distance;
-
-        // Hit object
-        if distance <= epsilon || ray_length > 1000.0 * 1000.0 || steps == 50 {
-            return 0.0;
-        } else if ray_length >= light_distance_sq {
-            return 1.0;
+        if res < -1.0 || t > max_t {
+            break;
         }
-
-        ray.step(distance);
-    }
-}
-
-pub fn calculate_light(point: Vec3, normal: Vec3, scene: &Scene) -> Vec3 {
-    let mut lighting = (0.0, 0.0, 0.0);
-    for light in &scene.lights {
-        let light_delta = light.position.sub(point);
-        let light_distance = light_delta.magnitude_sq();
-        let light_direction = light_delta.normalize();
-
-        let angle = light_direction.dot(normal).max(0.0);
-        let mut power = angle / light_distance;
-        // Only do expensive shadow tracing if not trivially obscured
-        if angle != 0.0 {
-            power *= trace_shadow_ray(point, scene, light);
-        }
-
-        lighting.add_assign(light.color.multiply_scalar(power));
     }
 
-    lighting
+    let res = res.max(-1.0);
+
+    0.25 * (1.0 + res) * (1.0 + res) * (2.0 - res)
 }
 
-pub fn calculate_normal(point: Vec3, scene: &Scene) -> Vec3 {
+fn calculate_normal(point: Vec3, scene: &Scene) -> Vec3 {
     let small_step_x = (0.000001, 0.0, 0.0);
     let small_step_y = (0.0, 0.000001, 0.0);
     let small_step_z = (0.0, 0.0, 0.000001);
@@ -93,31 +137,4 @@ pub fn calculate_normal(point: Vec3, scene: &Scene) -> Vec3 {
         entity.distance(point.add(small_step_z)) - entity.distance(point.sub(small_step_z)),
     )
         .normalize()
-}
-
-pub fn march(mut ray: ViewRay, scene: &Scene) -> ViewRay {
-    loop {
-        let ray_length = ray.len_sq();
-
-        let steps = ray.steps as u8;
-        let distance = scene.query_entities(ray.position).distance;
-        let epsilon = ray_length.max(0.1) / 100000.0;
-        // Hit object
-        if distance <= epsilon || ray_length > 1000.0 * 1000.0 || steps == 255 {
-            break;
-        }
-
-        ray.step(distance);
-    }
-
-    let surface_normal = calculate_normal(ray.position, scene);
-    let surface_material = &scene.query_entities(ray.position).entity.material;
-
-    ray.color = match surface_material {
-        Material::Basic(color) => {
-            calculate_light(ray.position, surface_normal, scene).channel_multiply(*color)
-        }
-    };
-
-    ray
 }

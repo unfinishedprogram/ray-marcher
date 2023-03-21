@@ -2,6 +2,7 @@ mod combine;
 mod primitive;
 pub mod repeat;
 mod rouding;
+mod scale;
 mod transform;
 
 use crate::{quaternion::Quaternion, vector3::Vec3};
@@ -9,7 +10,7 @@ pub use combine::*;
 pub use primitive::Primitive;
 pub use transform::{Rotation, Translation};
 
-use self::{repeat::Repeated, rouding::Rounded};
+use self::{repeat::Repeated, rouding::Rounded, scale::Scaled};
 
 pub trait SignedDistance: Sync {
     fn distance_from(&self, position: Vec3) -> f64;
@@ -61,5 +62,12 @@ pub trait SignedDistance: Sync {
         Self: Sized,
     {
         Repeated(Box::new(self), interval)
+    }
+
+    fn scale(self, factor: f64) -> Scaled<Self>
+    where
+        Self: Sized,
+    {
+        Scaled(Box::new(self), factor)
     }
 }
