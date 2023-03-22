@@ -1,8 +1,9 @@
-use crate::camera::Camera;
+use crate::util::show_image;
 
 mod angle;
 mod camera;
 mod entity;
+mod gpu_render;
 mod light;
 mod material;
 mod quaternion;
@@ -12,13 +13,18 @@ mod signed_distance_field;
 mod util;
 mod vector3;
 use angle::Angle;
+use camera::Camera;
 use entity::Entity;
+use gpu_render::render_gpu;
 use quaternion::{get_rotation, rotation_from_to};
-use render::render;
 use scene::SceneBuilder;
 use signed_distance_field::{intersect, subtract, Primitive::*, SignedDistance};
 use vector3::{Vector3, X, Y};
+
 fn main() {
+    log::set_max_level(log::LevelFilter::Info);
+    std::panic::set_hook(std::boxed::Box::new(console_error_panic_hook::hook));
+
     let apples = SceneBuilder::new(Camera::new(
         Angle::from_degrees(30.0),
         16.0 / 9.0,
@@ -71,7 +77,9 @@ fn main() {
     .light((-5.0, -2.0, 2.0), (25.0, 25.0, 25.0), 0.1)
     .build();
 
-    _ = render(&lights, (1920, 1080)).save("./lights.png");
-    _ = render(&soft, (1920, 1080)).save("./soft.png");
-    _ = render(&apples, (1920, 1080)).save("./apples.png");
+    wasm_bindgen_futures::spawn_local(render_gpu(soft, (192, 108)));
+
+    // _ = render(&lights, (1920, 1080)).save("./lights.png");
+    // _ = render(&soft, (1920, 1080)).save("./soft.png");
+    // _ = render(&apples, (1920, 1080)).save("./apples.png");
 }
