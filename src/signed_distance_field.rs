@@ -13,7 +13,7 @@ pub use transform::{Rotation, Translation};
 use self::{repeat::Repeated, rouding::Rounded, scale::Scaled};
 
 pub trait SignedDistance: Sync {
-    fn distance_from(&self, position: Vec3) -> f64;
+    fn distance_from(&self, position: Vec3) -> f32;
 
     fn rotate(self, rotation: Quaternion) -> Rotation<Self>
     where
@@ -29,42 +29,42 @@ pub trait SignedDistance: Sync {
         Translation(Box::new(self), translation)
     }
 
-    fn translate_x(self, x: f64) -> Translation<Self>
+    fn translate_x(self, x: f32) -> Translation<Self>
     where
         Self: Sized,
     {
         self.translate((x, 0.0, 0.0))
     }
 
-    fn translate_y(self, y: f64) -> Translation<Self>
+    fn translate_y(self, y: f32) -> Translation<Self>
     where
         Self: Sized,
     {
         self.translate((0.0, y, 0.0))
     }
 
-    fn translate_z(self, z: f64) -> Translation<Self>
+    fn translate_z(self, z: f32) -> Translation<Self>
     where
         Self: Sized,
     {
         self.translate((0.0, 0.0, z))
     }
 
-    fn round(self, radius: f64) -> Rounded<Self>
+    fn round(self, radius: f32) -> Rounded<Self>
     where
         Self: Sized,
     {
         Rounded(Box::new(self), radius)
     }
 
-    fn repeat(self, interval: f64) -> Repeated<Self>
+    fn repeat(self, interval: f32) -> Repeated<Self>
     where
         Self: Sized,
     {
         Repeated(Box::new(self), interval)
     }
 
-    fn scale(self, factor: f64) -> Scaled<Self>
+    fn scale(self, factor: f32) -> Scaled<Self>
     where
         Self: Sized,
     {

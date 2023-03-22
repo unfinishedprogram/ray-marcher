@@ -26,7 +26,7 @@ impl Entity {
         }
     }
 
-    pub fn distance(&self, point: Vec3) -> f64 {
+    pub fn distance(&self, point: Vec3) -> f32 {
         self.signed_distance.distance_from(point)
     }
 }

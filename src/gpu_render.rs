@@ -28,6 +28,8 @@ pub async fn get_compute_device(instance: &wgpu::Instance) -> (Device, Queue) {
 }
 
 pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
+    log::warn!("Done");
+
     let instance = wgpu::Instance::new(wgpu::Backends::BROWSER_WEBGPU);
     let (device, queue) = get_compute_device(&instance).await;
     let (width, height) = (width as u64, height as u64);
@@ -36,7 +38,7 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
 
     info!("Device Info:\n {device:?}");
 
-    let cs_module = device.create_shader_module(wgpu::include_wgsl!("shaders/test.wgsl"));
+    let cs_module = device.create_shader_module(wgpu::include_wgsl!("shaders/depth.wgsl"));
 
     let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
@@ -105,12 +107,14 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
 
     if let Some(Ok(())) = receiver.receive().await {
         let data = buffer_slice.get_mapped_range();
+        log::info!("Done");
         let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
+        log::info!("{:?}", &result);
         let result = result
             .chunks_exact(4)
             .flat_map(|arr| {
                 let (r, g, b) = (arr[0], arr[1], arr[2]);
-                let (r, g, b) = (r as f64, g as f64, b as f64).add((0.5, 0.5, 0.5)).rgb_u8();
+                let (r, g, b) = (r as f32, g as f32, b as f32).add((0.5, 0.5, 0.5)).rgb_u8();
                 [r, g, b]
             })
             .collect();

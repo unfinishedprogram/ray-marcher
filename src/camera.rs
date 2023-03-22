@@ -4,21 +4,22 @@ use crate::{
     vector3::{Vec3, Vector3},
 };
 
+#[repr(C)]
 pub struct Camera {
     pub fov: Angle,
     pub position: Vec3,
     pub orientation: Quaternion,
-    pub clip_plane: (f64, f64),
-    pub aspect_ratio: f64,
+    pub clip_plane: (f32, f32),
+    pub aspect_ratio: f32,
 }
 
 impl Camera {
     pub fn new(
         fov: Angle,
-        aspect_ratio: f64,
+        aspect_ratio: f32,
         position: Vec3,
         orientation: Quaternion,
-        clip_plane: (f64, f64),
+        clip_plane: (f32, f32),
     ) -> Self {
         Camera {
             fov,
@@ -29,7 +30,7 @@ impl Camera {
         }
     }
 
-    pub fn get_ray_direction(&self, x: f64, y: f64) -> Vec3 {
+    pub fn get_ray_direction(&self, x: f32, y: f32) -> Vec3 {
         let y = -y + 0.5;
         let x = (x - 0.5) * self.aspect_ratio;
 

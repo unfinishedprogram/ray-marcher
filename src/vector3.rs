@@ -4,7 +4,7 @@ use crate::{
     util::interpolation::soft_clamp,
 };
 
-pub type Vec3 = (f64, f64, f64);
+pub type Vec3 = (f32, f32, f32);
 
 pub const X: Vec3 = (1.0, 0.0, 0.0);
 pub const Y: Vec3 = (0.0, 1.0, 0.0);
@@ -13,17 +13,17 @@ pub const Z: Vec3 = (0.0, 0.0, 1.0);
 pub trait Vector3 {
     const ZERO: Vec3 = (0.0, 0.0, 0.0);
 
-    fn magnitude_sq(&self) -> f64;
+    fn magnitude_sq(&self) -> f32;
 
-    fn magnitude(&self) -> f64 {
+    fn magnitude(&self) -> f32 {
         self.magnitude_sq().sqrt()
     }
 
-    fn dot(self, other: Self) -> f64;
+    fn dot(self, other: Self) -> f32;
     fn cross(self, other: Vec3) -> Vec3;
     fn apply_rotation(self, r: Quaternion) -> Vec3;
     fn rotate(self, axis: Vec3, angle: Angle) -> Vec3;
-    fn multiply_scalar(self, scalar: f64) -> Vec3;
+    fn multiply_scalar(self, scalar: f32) -> Vec3;
     fn normalize(self) -> Vec3;
     fn rotate_xyz(self, other: Vec3) -> Vec3;
     fn rgb_u8(self) -> (u8, u8, u8);
@@ -32,22 +32,22 @@ pub trait Vector3 {
     fn channel_multiply(self, rhs: Vec3) -> Vec3;
     fn add_assign(&mut self, rhs: Vec3);
     fn sub_assign(&mut self, rhs: Vec3);
-    fn max(self, max: f64) -> f64;
+    fn max(self, max: f32) -> f32;
 }
 
 impl Vector3 for Vec3 {
     #[inline]
-    fn magnitude_sq(&self) -> f64 {
+    fn magnitude_sq(&self) -> f32 {
         self.0 * self.0 + self.1 * self.1 + self.2 * self.2
     }
 
     #[inline]
-    fn magnitude(&self) -> f64 {
+    fn magnitude(&self) -> f32 {
         self.magnitude_sq().sqrt()
     }
 
     #[inline]
-    fn dot(self, other: Vec3) -> f64 {
+    fn dot(self, other: Vec3) -> f32 {
         self.0 * other.0 + self.1 * other.1 + self.2 * other.2
     }
 
@@ -80,7 +80,7 @@ impl Vector3 for Vec3 {
     }
 
     #[inline]
-    fn multiply_scalar(self, scalar: f64) -> Vec3 {
+    fn multiply_scalar(self, scalar: f32) -> Vec3 {
         (self.0 * scalar, self.1 * scalar, self.2 * scalar)
     }
 
@@ -136,7 +136,7 @@ impl Vector3 for Vec3 {
         self.2 -= rhs.2;
     }
 
-    fn max(self, max: f64) -> f64 {
+    fn max(self, max: f32) -> f32 {
         self.0.max(self.1).max(self.2).max(max)
     }
 }

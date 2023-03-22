@@ -1,31 +1,32 @@
 // Angle is always stored in radians
 
-use std::{f64::consts::PI, ops::Mul};
+use std::{f32::consts::PI, ops::Mul};
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct Angle(f64);
+pub struct Angle(f32);
 
 impl Angle {
-    const PI_180: f64 = PI / 180.0;
-    const FULL_ROTATION: f64 = 2.0 * PI;
+    const PI_180: f32 = PI / 180.0;
+    const FULL_ROTATION: f32 = 2.0 * PI;
 
     #[inline]
-    pub fn from_radians(rad: f64) -> Self {
+    pub fn from_radians(rad: f32) -> Self {
         Self(rad % Self::FULL_ROTATION)
     }
 
     #[inline]
-    pub fn from_degrees(deg: f64) -> Self {
+    pub fn from_degrees(deg: f32) -> Self {
         Self((deg * Self::PI_180) % Self::FULL_ROTATION)
     }
 
     #[inline]
-    pub fn rad(self) -> f64 {
+    pub fn rad(self) -> f32 {
         self.0
     }
 
     #[inline]
-    pub fn deg(self) -> f64 {
+    pub fn deg(self) -> f32 {
         self.0 / Self::PI_180
     }
 
@@ -35,11 +36,11 @@ impl Angle {
     }
 }
 
-impl Mul<f64> for Angle {
+impl Mul<f32> for Angle {
     type Output = Self;
 
     #[inline]
-    fn mul(self, rhs: f64) -> Self {
+    fn mul(self, rhs: f32) -> Self {
         Angle((self.0 * rhs) % Self::FULL_ROTATION)
     }
 }

@@ -16,7 +16,10 @@ use angle::Angle;
 use camera::Camera;
 use entity::Entity;
 use gpu_render::render_gpu;
+use image::RgbImage;
+use log::info;
 use quaternion::{get_rotation, rotation_from_to};
+use render::render;
 use scene::SceneBuilder;
 use signed_distance_field::{intersect, subtract, Primitive::*, SignedDistance};
 use vector3::{Vector3, X, Y};
@@ -24,6 +27,7 @@ use vector3::{Vector3, X, Y};
 fn main() {
     log::set_max_level(log::LevelFilter::Info);
     std::panic::set_hook(std::boxed::Box::new(console_error_panic_hook::hook));
+    console_log::init().expect("could not initialize logger");
 
     let apples = SceneBuilder::new(Camera::new(
         Angle::from_degrees(30.0),

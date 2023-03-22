@@ -3,11 +3,11 @@ use crate::{
     vector3::{Vec3, Vector3},
 };
 
-pub type Quaternion = (f64, f64, f64, f64);
+pub type Quaternion = (f32, f32, f32, f32);
 pub trait Quat {
-    fn magnitude_sq(self) -> f64;
+    fn magnitude_sq(self) -> f32;
     fn inverse(self) -> Quaternion;
-    fn multiply_scalar(self, scalar: f64) -> Quaternion;
+    fn multiply_scalar(self, scalar: f32) -> Quaternion;
     fn is_identity(&self) -> bool;
 }
 
@@ -17,7 +17,7 @@ impl Quat for Quaternion {
         a == 1.0 && b == 0.0 && c == 0.0 && d == 0.0
     }
 
-    fn magnitude_sq(self) -> f64 {
+    fn magnitude_sq(self) -> f32 {
         let (a, b, c, d) = self;
         a * a + b * b + c * c + d * d
     }
@@ -29,7 +29,7 @@ impl Quat for Quaternion {
         conjugate.multiply_scalar(1.0 / magnitude)
     }
 
-    fn multiply_scalar(self, scalar: f64) -> Quaternion {
+    fn multiply_scalar(self, scalar: f32) -> Quaternion {
         (
             self.0 * scalar,
             self.1 * scalar,

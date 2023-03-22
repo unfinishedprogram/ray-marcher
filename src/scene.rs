@@ -34,7 +34,7 @@ impl SceneBuilder {
         self
     }
 
-    pub fn light(mut self, position: impl Into<Vec3>, color: impl Into<Vec3>, radius: f64) -> Self {
+    pub fn light(mut self, position: impl Into<Vec3>, color: impl Into<Vec3>, radius: f32) -> Self {
         self.lights.push(Light::new(position, color, radius));
         self
     }
@@ -42,7 +42,7 @@ impl SceneBuilder {
 
 pub struct SceneQueryResult<'a> {
     pub entity: &'a Entity,
-    pub distance: f64,
+    pub distance: f32,
 }
 
 impl Scene {

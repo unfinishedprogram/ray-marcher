@@ -12,7 +12,7 @@ fn get_ray_normal_buffer(scene: &Scene, (width, height): (usize, usize)) -> Vec<
         .into_par_iter()
         .map(|index| {
             let (x, y) = (index % width, index / width);
-            let (x, y, width, height) = (x as f64, y as f64, width as f64, height as f64);
+            let (x, y, width, height) = (x as f32, y as f32, width as f32, height as f32);
             scene.camera.get_ray_direction(x / width, y / height)
         })
         .collect()
@@ -101,10 +101,10 @@ pub fn render(scene: &Scene, (width, height): (usize, usize)) -> RgbaImage {
     image
 }
 
-pub fn trace_shadow_ray(scene: &Scene, point: Vec3, light: &Light) -> f64 {
+pub fn trace_shadow_ray(scene: &Scene, point: Vec3, light: &Light) -> f32 {
     let max_t = light.position.sub(point).magnitude();
     let normal = light.position.sub(point).normalize();
-    let mut res: f64 = 1.0;
+    let mut res: f32 = 1.0;
     let mut t = 0.00001;
 
     for _ in 0..255 {

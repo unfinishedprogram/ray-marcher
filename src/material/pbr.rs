@@ -1,8 +1,8 @@
 use crate::vector3::Vec3;
 
 pub struct PBRMaterial {
-    roughness: f64,
-    specular: f64,
-    metallic: f64,
+    roughness: f32,
+    specular: f32,
+    metallic: f32,
     albedo: Vec3,
 }

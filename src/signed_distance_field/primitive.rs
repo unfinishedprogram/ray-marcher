@@ -4,14 +4,14 @@ use super::SignedDistance;
 
 pub enum Primitive {
     Plane,
-    Sphere(f64),
-    Torus(f64, f64),
+    Sphere(f32),
+    Torus(f32, f32),
     Box(Vec3),
 }
 
 impl SignedDistance for Primitive {
     #[inline]
-    fn distance_from(&self, point: Vec3) -> f64 {
+    fn distance_from(&self, point: Vec3) -> f32 {
         use Primitive::*;
 
         match self {

@@ -1,4 +1,4 @@
-pub fn smooth_step(min: f64, max: f64, x: f64) -> f64 {
+pub fn smooth_step(min: f32, max: f32, x: f32) -> f32 {
     if x < min {
         min
     } else if x > max {
@@ -9,7 +9,7 @@ pub fn smooth_step(min: f64, max: f64, x: f64) -> f64 {
     }
 }
 
-pub fn soft_clamp(x: f64, min: f64, max: f64) -> f64 {
+pub fn soft_clamp(x: f32, min: f32, max: f32) -> f32 {
     smooth_step(
         0.0,
         1.0,

@@ -2,10 +2,10 @@ use crate::vector3::Vec3;
 
 use super::SignedDistance;
 
-pub struct Repeated<T: SignedDistance + Sized>(pub Box<T>, pub f64);
+pub struct Repeated<T: SignedDistance + Sized>(pub Box<T>, pub f32);
 
 impl<T: SignedDistance + Sized> SignedDistance for Repeated<T> {
-    fn distance_from(&self, point: Vec3) -> f64 {
+    fn distance_from(&self, point: Vec3) -> f32 {
         let (x, y, z) = point;
         let point = (
             x.abs() % self.1 - self.1 / 2.0,
