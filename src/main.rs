@@ -9,6 +9,7 @@ mod material;
 mod quaternion;
 mod render;
 mod scene;
+mod scene_buffer;
 mod signed_distance_field;
 mod util;
 mod vector3;
@@ -28,6 +29,8 @@ fn main() {
     log::set_max_level(log::LevelFilter::Info);
     std::panic::set_hook(std::boxed::Box::new(console_error_panic_hook::hook));
     console_log::init().expect("could not initialize logger");
+
+    log::info!("Hello!");
 
     let apples = SceneBuilder::new(Camera::new(
         Angle::from_degrees(30.0),

@@ -1,8 +1,11 @@
-use crate::{util::show_image, Vector3};
+use crate::{
+    scene_buffer::{SceneBufferBuilder, SceneEntity},
+    util::show_image,
+    Vector3,
+};
 use image::RgbImage;
 use log::info;
-use std::mem::size_of;
-use wgpu::{util::DeviceExt, BufferDescriptor, Device, Queue};
+use wgpu::{util::DeviceExt, Device, Queue};
 
 use crate::scene::Scene;
 
@@ -28,13 +31,24 @@ pub async fn get_compute_device(instance: &wgpu::Instance) -> (Device, Queue) {
 }
 
 pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
-    log::warn!("Done");
-
+    log::warn!("Hello!");
     let instance = wgpu::Instance::new(wgpu::Backends::BROWSER_WEBGPU);
     let (device, queue) = get_compute_device(&instance).await;
     let (width, height) = (width as u64, height as u64);
+    let buffer_size = width * height * 4 * 4;
 
-    let buffer_size = 4 * 4 * width * height;
+    let mut scene_buffer = SceneBufferBuilder::new();
+    scene_buffer.push(SceneEntity::Sphere(1.0), true);
+    // scene_buffer.push(
+    //     SceneEntity::Translate {
+    //         v: (2.0, 0.0, 0.0),
+    //         _padding: 0,
+    //         pointer: 0,
+    //     },
+    //     true,
+    // );
+
+    let scene_buffer = scene_buffer.build();
 
     info!("Device Info:\n {device:?}");
 
@@ -48,6 +62,7 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
     });
 
     let contents: Vec<f32> = vec![0.0; buffer_size as usize];
+
     log::info!("{:?}", contents.len());
 
     let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -60,6 +75,12 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
         label: Some("Dimension Buffer"),
         contents: bytemuck::cast_slice(&[width as u32, height as u32]),
         usage: wgpu::BufferUsages::UNIFORM,
+    });
+
+    let scene_data = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Scene Uniform"),
+        contents: bytemuck::bytes_of(&scene_buffer),
+        usage: wgpu::BufferUsages::STORAGE,
     });
 
     let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -82,6 +103,10 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
             wgpu::BindGroupEntry {
                 binding: 1,
                 resource: dimension_uniform.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: scene_data.as_entire_binding(),
             },
         ],
     });
@@ -114,7 +139,7 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
             .chunks_exact(4)
             .flat_map(|arr| {
                 let (r, g, b) = (arr[0], arr[1], arr[2]);
-                let (r, g, b) = (r as f32, g as f32, b as f32).add((0.5, 0.5, 0.5)).rgb_u8();
+                let (r, g, b) = (r, g, b).add((0.5, 0.5, 0.5)).rgb_u8();
                 [r, g, b]
             })
             .collect();
