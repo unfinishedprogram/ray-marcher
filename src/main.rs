@@ -1,5 +1,3 @@
-use crate::util::show_image;
-
 mod angle;
 mod camera;
 mod entity;
@@ -17,10 +15,7 @@ use angle::Angle;
 use camera::Camera;
 use entity::Entity;
 use gpu_render::render_gpu;
-use image::RgbImage;
-use log::info;
 use quaternion::{get_rotation, rotation_from_to};
-use render::render;
 use scene::SceneBuilder;
 use signed_distance_field::{intersect, subtract, Primitive::*, SignedDistance};
 use vector3::{Vector3, X, Y};

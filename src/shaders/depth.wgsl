@@ -1,6 +1,10 @@
-const STACK_SIZE: u32 = 64u;
-const MAX_ENTITIES: u32 = 64u;
+const STACK_SIZE: u32 = 4u;
+const MAX_ENTITIES: u32 = 4u;
 const MAX_SIGNED_DISTANCE: f32 = 1000000.0;
+const MAX_MARCH_STEPS: u32 = 255u;
+
+const CLIP_NEAR:f32 = 0.001;
+const CLIP_FAR:f32 = 10000.0;
 
 
 struct Scene {
@@ -9,7 +13,6 @@ struct Scene {
     entities_length: u32,
     render_queue_length: u32,
 }
-
 
 // Base stack item mostly for padding
 struct SceneItem {
@@ -55,11 +58,11 @@ fn as_translate(item:SceneItem) -> Translate {
     var translate:Translate;
     translate.item_type = TRANSLATE;
 
-    let x = bitcast<f32>(item._padding[1]);
-    let y = bitcast<f32>(item._padding[2]);
-    let z = bitcast<f32>(item._padding[3]);
+    let x = bitcast<f32>(item._padding[0]);
+    let y = bitcast<f32>(item._padding[1]);
+    let z = bitcast<f32>(item._padding[2]);
 
-    let pointer = item._padding[4];
+    let pointer = item._padding[3];
 
     translate.v = vec3<f32>(x, y, z);
     translate.pointer = pointer;
@@ -102,7 +105,7 @@ fn evaluate_sdf(index:u32, point:vec3<f32>) -> f32 {
 
             case SPHERE {
                 let sphere = as_sphere(item);
-                signed_distance = min(signed_distance, length(point) - sphere.radius);
+                signed_distance = min(signed_distance, length(transformed_point) - sphere.radius);
             }
 
             default {}
@@ -125,13 +128,35 @@ fn map(point:vec3<f32>) -> f32 {
     return min_dist;
 }
 
-const MAX:f32 = 25.0;
+fn pixel_color(rgb: vec3<f32>) -> u32 {
+    var res:u32 = 0xFF000000u;
+    let color = normalize(rgb) * 255.0;
+
+    res |= (u32(color.x) << 16u);
+    res |= (u32(color.y) << 8u);
+    res |= (u32(color.z));
+
+    return res;
+}
+
+fn surface_normal(point:vec3<f32>) -> vec3<f32> {
+    let step_x = vec3<f32>(0.00001, 0.0, 0.0);
+    let step_y = vec3<f32>(0.0, 0.00001, 0.0);
+    let step_z = vec3<f32>(0.0, 0.0, 0.00001);
+
+    return normalize(vec3<f32>(
+        map(point + step_x) - map(point - step_x),
+        map(point + step_y) - map(point - step_y),
+        map(point + step_z) - map(point - step_z),
+    ));
+}
 
 
-@group(0) @binding(0) var<storage, read_write> ray_buffer: array<ViewRay>;
+@group(0) @binding(0) var<storage, read_write> view_buffer: array<u32>;
 @group(0) @binding(1) var<uniform> dimensions: vec2<u32>;
 @group(0) @binding(2) var<storage, read> scene: Scene;
-@compute @workgroup_size(1)
+
+@compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var index = global_id.x + global_id.y * dimensions.x;
 
@@ -139,27 +164,23 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let dims_f32 = vec2<f32>(f32(dimensions.x), f32(dimensions.y));
 
     let aspect_ratio = dims_f32.x / dims_f32.y;
-
     var normalized = ((position / dims_f32) - vec2<f32>(0.5, 0.5)) * vec2<f32>(aspect_ratio, 1.0);
 
     let ray_direction = normalize(vec3(normalized, 1.0));
-    let ray_position = vec3<f32>(0.0, 0.0, -10.0);
+    let ray_origin = vec3<f32>(0.0, 0.0, -10.0);
 
-    var t:f32 = 0.0;
+    var ray_length:f32 = CLIP_NEAR;
 
-    for (var i = 0; i < 256; i++) {
-        let point = ray_position + (ray_direction * t);
-        let d = map(point);
-        if d <= 0.01 { break; }
-        if t >= MAX { break; }
+    for (var i:u32 = 0u; i < MAX_MARCH_STEPS; i++) {
+        let point = ray_origin + (ray_direction * ray_length);
 
-        t += d;
+        let min_signed_distance = map(point);
+
+        if ray_length >= CLIP_FAR { break; }
+        if min_signed_distance <= 0.001 { break; }
+
+        ray_length += min_signed_distance;
     }
-    
 
-    t = clamp(t, 0.0, MAX);
-    t/=MAX;
-    // ray_buffer[index].position = ray_direction;z q
-    ray_buffer[index].position = vec3<f32>(t, t, t);
-    ray_buffer[index].distance = t;
+    view_buffer[index] = pixel_color(surface_normal(ray_origin + (ray_direction * ray_length)));
 }

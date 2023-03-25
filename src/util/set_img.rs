@@ -12,7 +12,6 @@ pub fn show_image(image: RgbImage) {
         .expect("Failed to write image");
 
     let base64 = format!("data:image/png;base64,{}", base64::encode(image_data));
-    log::info!("{base64}");
 
     web_sys::window()
         .unwrap()

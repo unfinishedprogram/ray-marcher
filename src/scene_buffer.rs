@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use bytemuck::{Pod, Zeroable};
-const MAX_ENTITIES: usize = 64;
+const MAX_ENTITIES: usize = 4;
 const ENTITY_SIZE: usize = size_of::<SceneEntity>();
 
 use crate::vector3::Vec3;

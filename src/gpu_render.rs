@@ -3,6 +3,7 @@ use crate::{
     util::show_image,
     Vector3,
 };
+
 use image::RgbImage;
 use log::info;
 use wgpu::{util::DeviceExt, Device, Queue};
@@ -11,16 +12,19 @@ use crate::scene::Scene;
 
 pub async fn get_compute_device(instance: &wgpu::Instance) -> (Device, Queue) {
     let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions::default())
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            ..Default::default()
+        })
         .await
         .expect("Failed to get adapter");
 
     let (device, queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {
-                label: None,
+                label: Some("Main Device"),
                 features: wgpu::Features::empty(),
-                limits: wgpu::Limits::downlevel_defaults(),
+                limits: wgpu::Limits::default(),
             },
             None,
         )
@@ -31,22 +35,27 @@ pub async fn get_compute_device(instance: &wgpu::Instance) -> (Device, Queue) {
 }
 
 pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
-    log::warn!("Hello!");
+    log::info!("Fetching Device");
+
     let instance = wgpu::Instance::new(wgpu::Backends::BROWSER_WEBGPU);
     let (device, queue) = get_compute_device(&instance).await;
     let (width, height) = (width as u64, height as u64);
-    let buffer_size = width * height * 4 * 4;
+    let buffer_size = width * height * 4;
+
+    let view_buffer_size = width * height * 4;
 
     let mut scene_buffer = SceneBufferBuilder::new();
-    scene_buffer.push(SceneEntity::Sphere(1.0), true);
-    // scene_buffer.push(
-    //     SceneEntity::Translate {
-    //         v: (2.0, 0.0, 0.0),
-    //         _padding: 0,
-    //         pointer: 0,
-    //     },
-    //     true,
-    // );
+    scene_buffer.push(SceneEntity::Sphere(1.0), false);
+    scene_buffer.push(
+        SceneEntity::Translate {
+            v: (3.0, 0.0, 0.0),
+            _padding: 0,
+            pointer: 0,
+        },
+        true,
+    );
+
+    scene_buffer.push(SceneEntity::Sphere(2.0), true);
 
     let scene_buffer = scene_buffer.build();
 
@@ -54,21 +63,18 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
 
     let cs_module = device.create_shader_module(wgpu::include_wgsl!("shaders/depth.wgsl"));
 
-    let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    let view_staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
-        size: buffer_size,
+        size: view_buffer_size,
         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
 
-    let contents: Vec<f32> = vec![0.0; buffer_size as usize];
-
-    log::info!("{:?}", contents.len());
-
-    let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    let view_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Storage Buffer"),
-        contents: bytemuck::cast_slice(&contents),
+        size: view_buffer_size,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
     });
 
     let dimension_uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -98,7 +104,7 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
         entries: &[
             wgpu::BindGroupEntry {
                 binding: 0,
-                resource: storage_buffer.as_entire_binding(),
+                resource: view_buffer.as_entire_binding(),
             },
             wgpu::BindGroupEntry {
                 binding: 1,
@@ -121,31 +127,31 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
         pass.dispatch_workgroups(width as u32, height as u32, 1);
     }
 
-    encoder.copy_buffer_to_buffer(&storage_buffer, 0, &staging_buffer, 0, buffer_size);
+    encoder.copy_buffer_to_buffer(&view_buffer, 0, &view_staging_buffer, 0, view_buffer_size);
 
     queue.submit(Some(encoder.finish()));
 
-    let buffer_slice = staging_buffer.slice(..);
+    let buffer_slice = view_staging_buffer.slice(..);
     let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
     buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-    device.poll(wgpu::Maintain::Wait);
+    // device.poll(wgpu::Maintain::Wait);
 
     if let Some(Ok(())) = receiver.receive().await {
         let data = buffer_slice.get_mapped_range();
         log::info!("Done");
-        let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
+        let result: Vec<u8> = bytemuck::cast_slice(&data).to_vec();
         log::info!("{:?}", &result);
+
         let result = result
             .chunks_exact(4)
             .flat_map(|arr| {
                 let (r, g, b) = (arr[0], arr[1], arr[2]);
-                let (r, g, b) = (r, g, b).add((0.5, 0.5, 0.5)).rgb_u8();
                 [r, g, b]
             })
             .collect();
 
         show_image(RgbImage::from_raw(width as u32, height as u32, result).unwrap());
         drop(data);
-        staging_buffer.unmap();
+        view_staging_buffer.unmap();
     }
 }
