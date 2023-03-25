@@ -6,6 +6,7 @@ use crate::{
 
 use image::RgbImage;
 use log::info;
+use wasm_bindgen_futures::spawn_local;
 use wgpu::{util::DeviceExt, Device, Queue};
 
 use crate::scene::Scene;
@@ -130,17 +131,15 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
     encoder.copy_buffer_to_buffer(&view_buffer, 0, &view_staging_buffer, 0, view_buffer_size);
 
     queue.submit(Some(encoder.finish()));
-
     let buffer_slice = view_staging_buffer.slice(..);
     let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+
     buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-    // device.poll(wgpu::Maintain::Wait);
 
     if let Some(Ok(())) = receiver.receive().await {
         let data = buffer_slice.get_mapped_range();
         log::info!("Done");
         let result: Vec<u8> = bytemuck::cast_slice(&data).to_vec();
-        log::info!("{:?}", &result);
 
         let result = result
             .chunks_exact(4)
