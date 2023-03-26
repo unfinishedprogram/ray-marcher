@@ -1,4 +1,2 @@
-[build]
-
 [serve]
-no_autoreload = true
+no_autoreload = false

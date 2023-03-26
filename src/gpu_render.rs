@@ -38,7 +38,7 @@ pub async fn get_compute_device(instance: &wgpu::Instance) -> (Device, Queue) {
 pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
     log::info!("Fetching Device");
 
-    let instance = wgpu::Instance::new(wgpu::Backends::BROWSER_WEBGPU);
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
     let (device, queue) = get_compute_device(&instance).await;
     let (width, height) = (width as u64, height as u64);
     let buffer_size = width * height * 4;
@@ -132,25 +132,24 @@ pub async fn render_gpu(scene: Scene, (width, height): (usize, usize)) {
 
     queue.submit(Some(encoder.finish()));
     let buffer_slice = view_staging_buffer.slice(..);
-    let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
 
-    buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
+    // buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
 
-    if let Some(Ok(())) = receiver.receive().await {
-        let data = buffer_slice.get_mapped_range();
-        log::info!("Done");
-        let result: Vec<u8> = bytemuck::cast_slice(&data).to_vec();
+    // if let Some(Ok(())) = receiver.receive().await {
+    //     let data = buffer_slice.get_mapped_range();
+    //     log::info!("Done");
+    //     let result: Vec<u8> = bytemuck::cast_slice(&data).to_vec();
 
-        let result = result
-            .chunks_exact(4)
-            .flat_map(|arr| {
-                let (r, g, b) = (arr[0], arr[1], arr[2]);
-                [r, g, b]
-            })
-            .collect();
+    //     let result = result
+    //         .chunks_exact(4)
+    //         .flat_map(|arr| {
+    //             let (r, g, b) = (arr[0], arr[1], arr[2]);
+    //             [r, g, b]
+    //         })
+    //         .collect();
 
-        show_image(RgbImage::from_raw(width as u32, height as u32, result).unwrap());
-        drop(data);
-        view_staging_buffer.unmap();
-    }
+    //     show_image(RgbImage::from_raw(width as u32, height as u32, result).unwrap());
+    //     drop(data);
+    //     view_staging_buffer.unmap();
+    // }
 }
