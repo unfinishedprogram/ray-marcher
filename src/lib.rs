@@ -19,7 +19,12 @@ use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
 use wgpu_context::WgpuContext;
 
-use crate::scene_buffer::{SceneBufferBuilder, SceneEntity};
+use crate::{
+    angle::Angle,
+    quaternion::get_rotation,
+    scene_buffer::{SceneBufferBuilder, SceneEntity},
+    vector3::{X, Y, Z},
+};
 
 fn get_canvas() -> HtmlCanvasElement {
     JsCast::dyn_into(
@@ -55,26 +60,33 @@ async fn run() {
     let mut ctx = WgpuContext::new(&get_canvas()).await;
 
     let mut scene_buffer = SceneBufferBuilder::new();
-    scene_buffer.push(SceneEntity::Translate {
-        render: 1,
-        pointer: 1,
-        v: (-5.0, 0.0, 0.0),
-    });
 
-    scene_buffer.push(SceneEntity::Sphere {
+    scene_buffer.push(SceneEntity::Box {
         render: 0,
-        radius: 2.0,
+        dimensions: (100.0, 1.0, 100.0),
     });
 
     scene_buffer.push(SceneEntity::Translate {
         render: 1,
-        pointer: 3,
+        pointer: 0,
         v: (0.0, -5.0, 0.0),
     });
 
     scene_buffer.push(SceneEntity::Box {
         render: 0,
-        dimensions: (100.0, 1.0, 100.0),
+        dimensions: (1.0, 1.0, 1.0),
+    });
+
+    scene_buffer.push(SceneEntity::Rotate {
+        render: 0,
+        pointer: 2,
+        q: get_rotation(Angle::from_degrees(45.0), Y),
+    });
+
+    scene_buffer.push(SceneEntity::Translate {
+        render: 1,
+        pointer: 3,
+        v: (0.0, 0.0, 0.0),
     });
 
     let scene_buffer = scene_buffer.build();

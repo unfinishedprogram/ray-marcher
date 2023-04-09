@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use bytemuck::{Pod, Zeroable};
-const MAX_ENTITIES: usize = 4;
+const MAX_ENTITIES: usize = 8;
 const ENTITY_SIZE: usize = size_of::<SceneEntity>();
 
 use crate::{quaternion::Quaternion, vector3::Vec3};
@@ -35,7 +35,6 @@ pub enum SceneEntity {
     },
 }
 
-// unsafe impl Pod for SceneEntity {}
 unsafe impl Pod for SceneEntity {}
 unsafe impl Zeroable for SceneEntity {}
 

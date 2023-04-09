@@ -45,7 +45,7 @@ pub fn identity_quaternion() -> Quaternion {
 
 pub fn get_rotation(angle: Angle, (x, y, z): Vec3) -> Quaternion {
     let (sin_a, cos_a) = (angle.rad() / 2.0).sin_cos();
-    (cos_a, sin_a * x, sin_a * y, sin_a * z)
+    (sin_a * x, sin_a * y, sin_a * z, cos_a)
 }
 
 pub fn rotation_from_to(from: Vec3, to: Vec3) -> Quaternion {
