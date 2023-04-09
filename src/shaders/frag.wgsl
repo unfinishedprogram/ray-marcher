@@ -134,7 +134,7 @@ fn push(item:SceneItem) {
 fn applyRotation(v:vec3<f32>, rv:vec4<f32>) -> vec3<f32>{
     let r = rv * vec4<f32>(-1.0, -1.0, -1.0, 1.0);
     let s = r.w;
-    let u = vec3<f32>(r.x, r.y, r.z);
+    let u = r.xyz;
     let a = u * (dot(u, v) * 2.0);
     let b = v * ((s * s) - dot(u, u));
     let c = cross(u, v) * (2.0 * s);
@@ -158,20 +158,14 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
             var translate = as_translate(item);
             transformed_point -= translate.v;
             push(scene.entities[translate.pointer]);
-        }
-
-        if item_type == ROTATE {
+        } else if item_type == ROTATE {
             var rotate = as_rotate(item);
             transformed_point = applyRotation(transformed_point, rotate.rotation);
             push(scene.entities[rotate.pointer]);
-        }
-
-        if item_type == SPHERE {
+        } else if item_type == SPHERE {
             let sphere = as_sphere(item);
             signed_distance = min(signed_distance, length(transformed_point) - sphere.radius);
-        }
-
-        if item_type == BOX {
+        } else if item_type == BOX {
             let box = as_box(item);
             let q = abs(transformed_point) - box.dimensions;
             let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
@@ -231,18 +225,19 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     var ray_length:f32 = CLIP_NEAR;
 
     var steps:u32 = 0u;
-    while(steps < MAX_MARCH_STEPS) {
-        steps++;
+    
+    loop {
         let point = ray_origin + (ray_direction * ray_length);
         let min_signed_distance = map(point);
         if ray_length >= CLIP_FAR { break; }
         if min_signed_distance <= THRESHOLD { break; }
         ray_length += min_signed_distance;
+        steps++;
+        if steps > MAX_MARCH_STEPS {break;}
     }
     
     let surface_point = ray_origin + ray_direction * ray_length;
     let surface_normal = surface_normal(surface_point);
 
-    let color = f32(steps) / 255.0;
     return vec4<f32>(surface_normal * 0.5 + vec3<f32>(0.5), 1.0);
 }

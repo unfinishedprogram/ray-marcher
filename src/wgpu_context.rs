@@ -1,6 +1,6 @@
 use wgpu::{
-    util::DeviceExt, BindGroupLayoutDescriptor, BindGroupLayoutEntry, InstanceDescriptor,
-    ShaderModule,
+    util::DeviceExt, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    InstanceDescriptor, RenderPipeline, ShaderModule,
 };
 
 use crate::scene_buffer::SceneBuffers;
@@ -10,7 +10,20 @@ pub struct WgpuContext {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
+    pub fragment_module: ShaderModule,
+    pub vertex_module: ShaderModule,
+    pub render_pipeline: RenderPipeline,
+
     pub size: (u32, u32),
+
+    pub bind_group_layout: BindGroupLayout,
+}
+
+fn load_shaders(device: &wgpu::Device) -> (ShaderModule, ShaderModule) {
+    let vertex_module = device.create_shader_module(wgpu::include_wgsl!("shaders/vert.wgsl"));
+    let fragment_module = device.create_shader_module(wgpu::include_wgsl!("shaders/frag.wgsl"));
+
+    (vertex_module, fragment_module)
 }
 
 impl WgpuContext {
@@ -18,6 +31,11 @@ impl WgpuContext {
         log::info!("Creating Wgpu Context");
         let (width, height) = (canvas.width(), canvas.height());
         log::info!("Canvas size: {width}x{height}");
+
+        // let instance = wgpu::Instance::new(InstanceDescriptor {
+        //     backends: Backends::PRIMARY,
+        //     dx12_shader_compiler: Default::default(),
+        // });
 
         let instance = wgpu::Instance::new(InstanceDescriptor::default());
         let surface = instance.create_surface_from_canvas(canvas).unwrap();
@@ -61,28 +79,88 @@ impl WgpuContext {
 
         surface.configure(&device, &surface_config);
 
+        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: None,
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let (vertex_module, fragment_module) = load_shaders(&device);
+
+        let render_pipeline = {
+            let frag_targets = [Some(wgpu::ColorTargetState {
+                format: surface_config.format,
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })];
+
+            let fragment = Some(wgpu::FragmentState {
+                module: &fragment_module,
+                entry_point: "main",
+                targets: &frag_targets,
+            });
+
+            let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+            let desc = &wgpu::RenderPipelineDescriptor {
+                label: Some("Render Pipeline"),
+                layout: Some(&layout),
+                vertex: wgpu::VertexState {
+                    module: &vertex_module,
+                    entry_point: "main",
+                    buffers: &[],
+                },
+                fragment,
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    ..Default::default()
+                },
+                depth_stencil: None,
+                multisample: Default::default(),
+                multiview: None,
+            };
+
+            device.create_render_pipeline(desc)
+        };
+
         Self {
+            render_pipeline,
+            vertex_module,
+            fragment_module,
             surface,
             device,
             queue,
             config: surface_config,
             size: (width, height),
+            bind_group_layout,
         }
     }
 
-    fn load_shaders(&mut self) -> (ShaderModule, ShaderModule) {
-        let vertex_module = self
-            .device
-            .create_shader_module(wgpu::include_wgsl!("shaders/vert.wgsl"));
-
-        let fragment_module = self
-            .device
-            .create_shader_module(wgpu::include_wgsl!("shaders/frag.wgsl"));
-
-        (vertex_module, fragment_module)
-    }
-
-    pub fn render(&mut self, scene: SceneBuffers) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&self, scene: SceneBuffers) -> Result<(), wgpu::SurfaceError> {
         let output_texture = self.surface.get_current_texture()?;
 
         let view = output_texture
@@ -112,39 +190,9 @@ impl WgpuContext {
             });
 
         {
-            let bind_group_layout =
-                self.device
-                    .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                        label: None,
-                        entries: &[
-                            BindGroupLayoutEntry {
-                                binding: 0,
-                                visibility: wgpu::ShaderStages::FRAGMENT,
-                                ty: wgpu::BindingType::Buffer {
-                                    ty: wgpu::BufferBindingType::Uniform,
-                                    has_dynamic_offset: false,
-                                    min_binding_size: None,
-                                },
-                                count: None,
-                            },
-                            BindGroupLayoutEntry {
-                                binding: 1,
-                                visibility: wgpu::ShaderStages::FRAGMENT,
-                                ty: wgpu::BindingType::Buffer {
-                                    ty: wgpu::BufferBindingType::Uniform,
-                                    has_dynamic_offset: false,
-                                    min_binding_size: None,
-                                },
-                                count: None,
-                            },
-                        ],
-                    });
-
-            let render_pipeline = self.create_render_pipeline(&bind_group_layout);
-
             let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Main Bind group"),
-                layout: &bind_group_layout,
+                layout: &self.bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -169,7 +217,8 @@ impl WgpuContext {
                 })],
                 depth_stencil_attachment: None,
             });
-            render_pass.set_pipeline(&render_pipeline);
+
+            render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &bind_group, &[]);
 
             render_pass.draw(0..3, 0..1);
@@ -178,52 +227,5 @@ impl WgpuContext {
         self.queue.submit(std::iter::once(encoder.finish()));
         output_texture.present();
         Ok(())
-    }
-
-    fn create_render_pipeline(
-        &mut self,
-        bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> wgpu::RenderPipeline {
-        let (vert_module, frag_module) = self.load_shaders();
-
-        let frag_targets = [Some(wgpu::ColorTargetState {
-            format: self.config.format,
-            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-            write_mask: wgpu::ColorWrites::ALL,
-        })];
-
-        let fragment = Some(wgpu::FragmentState {
-            module: &frag_module,
-            entry_point: "main",
-            targets: &frag_targets,
-        });
-
-        let layout = self
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Pipeline Layout"),
-                bind_group_layouts: &[bind_group_layout],
-                push_constant_ranges: &[],
-            });
-
-        let desc = &wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &vert_module,
-                entry_point: "main",
-                buffers: &[],
-            },
-            fragment,
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                ..Default::default()
-            },
-            depth_stencil: None,
-            multisample: Default::default(),
-            multiview: None,
-        };
-
-        self.device.create_render_pipeline(desc)
     }
 }
