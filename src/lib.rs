@@ -4,7 +4,6 @@
 mod angle;
 mod camera;
 mod entity;
-mod gpu_render;
 mod light;
 mod material;
 mod quaternion;
@@ -18,7 +17,6 @@ mod wgpu_context;
 use angle::Angle;
 use camera::Camera;
 use entity::Entity;
-use gpu_render::render_gpu;
 use quaternion::{get_rotation, rotation_from_to};
 use scene::SceneBuilder;
 use signed_distance_field::{intersect, subtract, Primitive::*, SignedDistance};
