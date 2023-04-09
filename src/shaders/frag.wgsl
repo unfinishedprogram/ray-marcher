@@ -7,6 +7,8 @@ const MAX_MARCH_STEPS = 255u;
 const CLIP_NEAR:f32 = 0.001;
 const CLIP_FAR:f32 = 10000.0;
 
+const THRESHOLD:f32 = 0.001;
+
 const MAX_RECUR_DEPTH = 8;
 
 // Constants defining the Enum Index of primitives
@@ -175,13 +177,12 @@ fn main(in: Input) -> @location(0) vec4<f32> {
         let point = ray_origin + (ray_direction * ray_length);
         let min_signed_distance = map(point);
         if ray_length >= CLIP_FAR { break; }
-        if min_signed_distance <= 0.001 { break; }
+        if min_signed_distance <= THRESHOLD { break; }
         ray_length += min_signed_distance;
     }
 
-    let d = 1.0/ray_length;
+    let surface_point = ray_origin + ray_direction * ray_length;
+    let surface_normal = surface_normal(surface_point);
 
-    let c = surface_normal(ray_origin + (ray_direction * ray_length));
-
-    return vec4<f32>(c, 1.0);
+    return vec4<f32>(surface_normal, 1.0);
 }
