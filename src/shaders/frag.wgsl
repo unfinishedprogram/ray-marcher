@@ -173,11 +173,8 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
 
         if item_type == BOX {
             let box = as_box(item);
-
             let q = abs(transformed_point) - box.dimensions;
-            let q_len = length(max(q, vec3(0.0)));
-            let distance = q_len + max(q.x, max(q.y, max(q.z, 0.0)));
-
+            let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
             signed_distance = min(signed_distance, distance);
         }
     }
@@ -247,5 +244,5 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     let surface_normal = surface_normal(surface_point);
 
     let color = f32(steps) / 255.0;
-    return vec4<f32>(color, color, color, 1.0);
+    return vec4<f32>(surface_normal * 0.5 + vec3<f32>(0.5), 1.0);
 }

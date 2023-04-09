@@ -77,16 +77,21 @@ async fn run() {
         dimensions: (1.0, 1.0, 1.0),
     });
 
-    scene_buffer.push(SceneEntity::Rotate {
+    scene_buffer.push(SceneEntity::Translate {
         render: 0,
         pointer: 2,
+        v: (0.0, -2.0, 0.0),
+    });
+
+    scene_buffer.push(SceneEntity::Rotate {
+        render: 1,
+        pointer: 3,
         q: get_rotation(Angle::from_degrees(45.0), Y),
     });
 
-    scene_buffer.push(SceneEntity::Translate {
+    scene_buffer.push(SceneEntity::Sphere {
         render: 1,
-        pointer: 3,
-        v: (0.0, 0.0, 0.0),
+        radius: 1.0,
     });
 
     let scene_buffer = scene_buffer.build();
