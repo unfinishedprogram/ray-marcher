@@ -7,7 +7,7 @@ const MAX_MARCH_STEPS = 255u;
 const CLIP_NEAR:f32 = 0.001;
 const CLIP_FAR:f32 = 10000.0;
 
-const RECUR_DEPTH = 8;
+const MAX_RECUR_DEPTH = 8;
 
 // Constants defining the Enum Index of primitives
 const SPHERE = 0u;
@@ -17,16 +17,17 @@ var<private> STACK_PTR:u32 = 0u;
 var<private> STACK_ITEMS:array<SceneItem, STACK_SIZE>; 
 
 // Base stack item mostly for padding
-
+// All scene items must have a "render" property, 
+// if it's value is 0 it is not rendered directly
 struct SceneItem {
     item_type: u32,
-    render:u32,
-    pad2:u32,
-    pad3:u32,
-    pad4:u32,
-    pad5:u32,
-    pad6:u32,
-    pad7:u32,
+    render: u32,
+    pad2: u32,
+    pad3: u32,
+    pad4: u32,
+    pad5: u32,
+    pad6: u32,
+    pad7: u32,
 }
 
 struct Scene {
@@ -36,26 +37,21 @@ struct Scene {
 // "Inherits" SceneItem
 struct Sphere {
     item_type: u32,
-    render:u32, 
+    render: u32, 
     radius: f32,
 }
 
 // "Inherits" SceneItem
 struct Translate {
     item_type: u32,
-    render:u32, 
+    render: u32, 
     pointer: u32, 
     v: vec3<f32>,
 }
 
-struct SDFEvalStack {
-    pointer:u32,
-    items:array<SceneItem, STACK_SIZE>,
-}
-
 struct ViewRay {
-    position:vec3<f32>,
-    distance:f32, // Distance along ray, 
+    position: vec3<f32>,
+    distance: f32, // Distance along ray, 
 }
 
 fn as_sphere(item:SceneItem) -> Sphere {
@@ -89,14 +85,14 @@ fn push(item:SceneItem) {
     STACK_PTR += 1u;
 }
 
-fn evaluate_sdf(index:u32, point:vec3<f32>) -> f32 {
+fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
     var signed_distance:f32 = MAX_SIGNED_DISTANCE;
     var transformed_point:vec3<f32> = point;
     push(scene.entities[index]);
 
     var iters = 0;
     // While items remain on the stack, evaluate them
-    while iters < RECUR_DEPTH && STACK_PTR > 0u {
+    while iters < MAX_RECUR_DEPTH && STACK_PTR > 0u {
         iters += 1;
         let item = pop();
         let item_type = item.item_type;
@@ -118,7 +114,6 @@ fn evaluate_sdf(index:u32, point:vec3<f32>) -> f32 {
 
 fn map(point:vec3<f32>) -> f32 {
     var min_dist = MAX_SIGNED_DISTANCE;
-    var stack: SDFEvalStack;
 
     for (var i = 0u; i < MAX_ENTITIES; i++) {
         if scene.entities[i].render != 0u {
@@ -152,16 +147,8 @@ fn surface_normal(point:vec3<f32>) -> vec3<f32> {
     ));
 }
 
-
-struct Dimensions {
-    x:f32, 
-    y:f32, 
-    z:f32, 
-    w:f32, 
-}
-
 @group(0) @binding(0) 
-var<uniform> dimensions: Dimensions;
+var<uniform> dimensions: vec4<f32>;
 @group(0) @binding(1) 
 var<uniform> scene: Scene;
 
@@ -172,11 +159,12 @@ struct Input {
 
 @fragment
 fn main(in: Input) -> @location(0) vec4<f32> {
-    let normalized = in.screen_cords / vec4<f32>(dimensions.x, dimensions.y, 1.0, 1.0);
+    // Get the aspect ratio of the render target
     let aspect_ratio = dimensions.x / dimensions.y;
+    // Normalize the pixel coordonates to -0.5 - 0.5;
+    let normalized = in.screen_cords / vec4<f32>(dimensions.x, dimensions.y, 1.0, 1.0) - vec4<f32>(0.5);
 
-    let aspected = (normalized - vec4<f32>(0.5)) * vec4<f32>(aspect_ratio, 1.0, 1.0, 1.0);
-
+    let aspected = (normalized ) * vec4<f32>(aspect_ratio, 1.0, 1.0, 1.0);
 
     let ray_direction = normalize(vec3(aspected.x, aspected.y, 1.0));
     let ray_origin = vec3<f32>(0.0, 0.0, -10.0);
