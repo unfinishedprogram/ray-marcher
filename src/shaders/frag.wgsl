@@ -126,17 +126,6 @@ fn map(point:vec3<f32>) -> f32 {
     return min_dist;
 }
 
-fn pixel_color(rgb: vec3<f32>) -> u32 {
-    var res:u32 = 0xFF000000u;
-    let color = normalize(rgb) * 255.0;
-
-    res |= (u32(color.x) << 16u);
-    res |= (u32(color.y) << 8u);
-    res |= (u32(color.z));
-
-    return res;
-}
-
 fn surface_normal(point:vec3<f32>) -> vec3<f32> {
     let step_x = vec3<f32>(0.0001, 0.0, 0.0);
     let step_y = vec3<f32>(0.0, 0.0001, 0.0);
@@ -173,16 +162,19 @@ fn main(in: Input) -> @location(0) vec4<f32> {
 
     var ray_length:f32 = CLIP_NEAR;
 
-    for (var i:u32 = 0u; i < MAX_MARCH_STEPS; i++) {
+    var steps:u32 = 0u;
+    while(steps < MAX_MARCH_STEPS) {
+        steps++;
         let point = ray_origin + (ray_direction * ray_length);
         let min_signed_distance = map(point);
         if ray_length >= CLIP_FAR { break; }
         if min_signed_distance <= THRESHOLD { break; }
         ray_length += min_signed_distance;
     }
-
+    
     let surface_point = ray_origin + ray_direction * ray_length;
     let surface_normal = surface_normal(surface_point);
 
-    return vec4<f32>(surface_normal, 1.0);
+    let color = f32(steps) / 255.0;
+    return vec4<f32>(color, color, color, 1.0);
 }
