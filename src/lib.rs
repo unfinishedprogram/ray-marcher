@@ -61,8 +61,15 @@ async fn run() {
         v: (-5.0, 0.0, 0.0),
     });
 
-    scene_buffer.push(SceneEntity::Sphere(0, 2.0));
-    scene_buffer.push(SceneEntity::Sphere(1, 2.0));
+    scene_buffer.push(SceneEntity::Sphere {
+        render: 0,
+        radius: 2.0,
+    });
+
+    scene_buffer.push(SceneEntity::Sphere {
+        render: 1,
+        radius: 2.0,
+    });
 
     let scene_buffer = scene_buffer.build();
     dbg!(scene_buffer);

@@ -12,8 +12,9 @@ const THRESHOLD:f32 = 0.001;
 const MAX_RECUR_DEPTH = 8;
 
 // Constants defining the Enum Index of primitives
-const SPHERE = 0u;
-const TRANSLATE = 1u;
+const EMPTY = 0u;
+const SPHERE = 1u;
+const TRANSLATE = 2u;
 
 var<private> STACK_PTR:u32 = 0u;
 var<private> STACK_ITEMS:array<SceneItem, STACK_SIZE>; 

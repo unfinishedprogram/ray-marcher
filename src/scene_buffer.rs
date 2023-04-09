@@ -11,7 +11,8 @@ type Ptr = u32;
 #[repr(C, align(16))]
 #[derive(Clone, Copy)]
 pub enum SceneEntity {
-    Sphere(u32, f32),
+    Empty,
+    Sphere { render: u32, radius: f32 },
     Translate { render: u32, pointer: Ptr, v: Vec3 },
 }
 
@@ -37,7 +38,7 @@ pub struct SceneBuffers {
 impl SceneBufferBuilder {
     pub fn new() -> Self {
         Self {
-            entities: [SceneEntity::Sphere(0, 0.0); MAX_ENTITIES],
+            entities: [SceneEntity::Empty; MAX_ENTITIES],
             entities_length: 0,
         }
     }
