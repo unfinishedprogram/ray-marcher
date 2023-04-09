@@ -188,7 +188,7 @@ fn main(in: Input) -> @location(0) vec4<f32> {
 
     let aspected = (normalized ) * vec4<f32>(aspect_ratio, 1.0, 1.0, 1.0);
 
-    let ray_direction = normalize(vec3(aspected.x, aspected.y, 1.0));
+    let ray_direction = normalize(vec3(aspected.x, -aspected.y, 1.0));
     let ray_origin = vec3<f32>(0.0, 0.0, -10.0);
 
     var ray_length:f32 = CLIP_NEAR;
