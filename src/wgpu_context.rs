@@ -1,8 +1,6 @@
-use std::num::NonZeroU64;
-
 use wgpu::{
-    util::DeviceExt, Backends, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
-    Buffer, InstanceDescriptor, PipelineLayout, RenderPipelineDescriptor, ShaderModule,
+    util::DeviceExt, BindGroupLayoutDescriptor, BindGroupLayoutEntry, InstanceDescriptor,
+    ShaderModule,
 };
 
 use crate::scene_buffer::SceneBuffers;
@@ -177,12 +175,7 @@ impl WgpuContext {
             render_pass.draw(0..3, 0..1);
         }
 
-        self.queue.on_submitted_work_done(|| {
-            log::info!("DONE WORK");
-        });
-
         self.queue.submit(std::iter::once(encoder.finish()));
-
         output_texture.present();
         Ok(())
     }

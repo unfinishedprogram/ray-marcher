@@ -1,2 +1,2 @@
 [serve]
-no_autoreload = false
+no_autoreload = true

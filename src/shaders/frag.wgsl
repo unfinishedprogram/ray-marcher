@@ -68,6 +68,7 @@ fn as_sphere(item:SceneItem) -> Sphere {
 fn as_translate(item:SceneItem) -> Translate {
     var translate:Translate;
     translate.item_type = TRANSLATE;
+    
     translate.pointer = item.pad2;
     let x = bitcast<f32>(item.pad3);
     let y = bitcast<f32>(item.pad4);

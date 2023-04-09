@@ -14,28 +14,12 @@ mod signed_distance_field;
 mod util;
 mod vector3;
 mod wgpu_context;
-use angle::Angle;
-use camera::Camera;
-use entity::Entity;
-use quaternion::{get_rotation, rotation_from_to};
-use scene::SceneBuilder;
-use signed_distance_field::{intersect, subtract, Primitive::*, SignedDistance};
-use std::time::Duration;
-use std::{borrow::Borrow, cell::RefCell};
-use vector3::{Vector3, X, Y};
 
 use wasm_bindgen::prelude::*;
-use web_sys::{Document, HtmlCanvasElement};
+use web_sys::HtmlCanvasElement;
 use wgpu_context::WgpuContext;
 
-#[macro_use]
-extern crate lazy_static;
-
 use crate::scene_buffer::{SceneBufferBuilder, SceneEntity};
-
-thread_local! {
-    pub static G_CONTEXT: RefCell<Option<WgpuContext>> = RefCell::new(None);
-}
 
 fn get_canvas() -> HtmlCanvasElement {
     JsCast::dyn_into(
@@ -68,30 +52,19 @@ async fn run() {
     // .light((-5.0, -2.0, 2.0), (25.0, 25.0, 25.0), 0.1)
     // .build();
 
-    // render_gpu(soft, (192, 108)).await;
+    let mut ctx = WgpuContext::new(&get_canvas()).await;
 
-    let ctx = WgpuContext::new(&get_canvas()).await;
-    G_CONTEXT.with_borrow_mut(move |value| {
-        _ = value.insert(ctx);
+    let mut scene_buffer = SceneBufferBuilder::new();
+    scene_buffer.push(SceneEntity::Translate {
+        render: 1,
+        pointer: 1,
+        v: (-5.0, 0.0, 0.0),
     });
 
-    G_CONTEXT.with_borrow_mut(|ctx| {
-        let mut scene_buffer = SceneBufferBuilder::new();
-        scene_buffer.push(SceneEntity::Translate {
-            render: 1,
-            pointer: 1,
-            v: (-5.0, 0.0, 0.0),
-        });
+    scene_buffer.push(SceneEntity::Sphere(0, 2.0));
+    scene_buffer.push(SceneEntity::Sphere(1, 2.0));
 
-        scene_buffer.push(SceneEntity::Sphere(0, 2.0));
-        scene_buffer.push(SceneEntity::Sphere(1, 2.0));
-
-        let scene_buffer = scene_buffer.build();
-        dbg!(scene_buffer);
-        _ = ctx.as_mut().unwrap().render(scene_buffer);
-    })
-    // gloo::timers::callback::Timeout::new(0, move || {
-
-    // })
-    // .forget();
+    let scene_buffer = scene_buffer.build();
+    dbg!(scene_buffer);
+    _ = ctx.render(scene_buffer);
 }
