@@ -77,24 +77,23 @@ async fn run() {
         _ = value.insert(ctx);
     });
 
-    gloo::timers::callback::Timeout::new(500, move || {
-        G_CONTEXT.with_borrow_mut(|ctx| {
-            let mut scene_buffer = SceneBufferBuilder::new();
-            scene_buffer.push(SceneEntity::Sphere(1.0), false);
-            scene_buffer.push(
-                SceneEntity::Translate {
-                    v: (3.0, 0.0, 0.0),
-                    _padding: 0,
-                    pointer: 0,
-                },
-                true,
-            );
+    G_CONTEXT.with_borrow_mut(|ctx| {
+        let mut scene_buffer = SceneBufferBuilder::new();
+        scene_buffer.push(SceneEntity::Translate {
+            render: 1,
+            pointer: 1,
+            v: (-5.0, 0.0, 0.0),
+        });
 
-            scene_buffer.push(SceneEntity::Sphere(2.0), true);
+        scene_buffer.push(SceneEntity::Sphere(0, 2.0));
+        scene_buffer.push(SceneEntity::Sphere(1, 2.0));
 
-            let scene_buffer = scene_buffer.build();
-            _ = ctx.as_mut().unwrap().render(scene_buffer);
-        })
+        let scene_buffer = scene_buffer.build();
+        dbg!(scene_buffer);
+        _ = ctx.as_mut().unwrap().render(scene_buffer);
     })
-    .forget();
+    // gloo::timers::callback::Timeout::new(0, move || {
+
+    // })
+    // .forget();
 }

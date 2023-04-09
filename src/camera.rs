@@ -39,18 +39,3 @@ impl Camera {
             .apply_rotation(self.orientation)
     }
 }
-
-// Base stack item mostly for padding
-struct SceneItem {
-    item_type: u32,
-    _padding: [u32; 7],
-}
-
-#[repr(align(16))]
-struct Scene {
-    entities: [SceneItem; 4],
-    render_queue: [u32; 4],
-    entities_length: u32,
-    render_queue_length: u32,
-    _padding: [u32; 2],
-}
