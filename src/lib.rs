@@ -66,9 +66,9 @@ async fn run() {
         radius: 2.0,
     });
 
-    scene_buffer.push(SceneEntity::Sphere {
+    scene_buffer.push(SceneEntity::Box {
         render: 1,
-        radius: 2.0,
+        dimensions: (1.0, 1.0, 1.0),
     });
 
     let scene_buffer = scene_buffer.build();

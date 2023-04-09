@@ -15,6 +15,7 @@ const MAX_RECUR_DEPTH = 8;
 const EMPTY = 0u;
 const SPHERE = 1u;
 const TRANSLATE = 2u;
+const BOX = 3u;
 
 var<private> STACK_PTR:u32 = 0u;
 var<private> STACK_ITEMS:array<SceneItem, STACK_SIZE>; 
@@ -52,6 +53,13 @@ struct Translate {
     v: vec3<f32>,
 }
 
+// "Inherits" SceneItem
+struct Box {
+    item_type: u32,
+    render: u32, 
+    dimensions:vec3<f32>,
+}
+
 struct ViewRay {
     position: vec3<f32>,
     distance: f32, // Distance along ray, 
@@ -76,6 +84,18 @@ fn as_translate(item:SceneItem) -> Translate {
     translate.v = vec3<f32>(x, y, z);
     
     return translate;
+}
+
+fn as_box(item:SceneItem) -> Box {
+    var box:Box;
+    box.item_type = BOX;
+
+    let x = bitcast<f32>(item.pad2);
+    let y = bitcast<f32>(item.pad3);
+    let z = bitcast<f32>(item.pad4);
+
+    box.dimensions = vec3<f32>(x, y, z);
+    return box;
 }
 
 fn pop() -> SceneItem {
@@ -109,6 +129,16 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
         if item_type == SPHERE {
             let sphere = as_sphere(item);
             signed_distance = min(signed_distance, length(transformed_point) - sphere.radius);
+        }
+
+        if item_type == BOX {
+            let box = as_box(item);
+
+            let q = abs(transformed_point) - box.dimensions;
+            let q_len = length(max(q, vec3(0.0)));
+            let distance = q_len + max(q.x, max(q.y, max(q.z, 0.0)));
+
+            signed_distance = min(signed_distance, distance);
         }
     }
 

@@ -4,7 +4,7 @@ use bytemuck::{Pod, Zeroable};
 const MAX_ENTITIES: usize = 4;
 const ENTITY_SIZE: usize = size_of::<SceneEntity>();
 
-use crate::vector3::Vec3;
+use crate::{quaternion::Quaternion, vector3::Vec3};
 
 type Ptr = u32;
 
@@ -12,8 +12,27 @@ type Ptr = u32;
 #[derive(Clone, Copy)]
 pub enum SceneEntity {
     Empty,
-    Sphere { render: u32, radius: f32 },
-    Translate { render: u32, pointer: Ptr, v: Vec3 },
+    Sphere {
+        render: u32,
+        radius: f32,
+    },
+
+    Translate {
+        render: u32,
+        pointer: Ptr,
+        v: Vec3,
+    },
+
+    Box {
+        render: u32,
+        dimensions: Vec3,
+    },
+
+    Rotate {
+        render: u32,
+        pointer: Ptr,
+        q: Quaternion,
+    },
 }
 
 // unsafe impl Pod for SceneEntity {}
