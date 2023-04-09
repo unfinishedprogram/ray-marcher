@@ -1,5 +1,6 @@
 const STACK_SIZE = 4u;
 const MAX_ENTITIES = 4u;
+
 const MAX_SIGNED_DISTANCE = 10000.0;
 const MAX_MARCH_STEPS = 255u;
 
@@ -8,6 +9,7 @@ const CLIP_FAR:f32 = 10000.0;
 
 const RECUR_DEPTH = 8;
 
+// Constants defining the Enum Index of primitives
 const SPHERE = 0u;
 const TRANSLATE = 1u;
 
@@ -36,7 +38,6 @@ struct Sphere {
     item_type: u32,
     render:u32, 
     radius: f32,
-    _padding: array<u32, 6u>,
 }
 
 // "Inherits" SceneItem
@@ -56,7 +57,6 @@ struct ViewRay {
     position:vec3<f32>,
     distance:f32, // Distance along ray, 
 }
-
 
 fn as_sphere(item:SceneItem) -> Sphere {
     var sphere:Sphere;
