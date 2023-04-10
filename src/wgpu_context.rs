@@ -32,11 +32,6 @@ impl WgpuContext {
         let (width, height) = (canvas.width(), canvas.height());
         log::info!("Canvas size: {width}x{height}");
 
-        // let instance = wgpu::Instance::new(InstanceDescriptor {
-        //     backends: Backends::PRIMARY,
-        //     dx12_shader_compiler: Default::default(),
-        // });
-
         let instance = wgpu::Instance::new(InstanceDescriptor::default());
         let surface = instance.create_surface_from_canvas(canvas).unwrap();
 
