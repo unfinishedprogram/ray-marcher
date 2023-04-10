@@ -17,7 +17,9 @@ mod wgpu_context;
 
 use std::{cell::RefCell, rc::Rc};
 
+use camera::Camera;
 use gloo::utils::window;
+use quaternion::rotation_from_to;
 use scene_buffer::SceneBuffers;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
@@ -27,7 +29,7 @@ use crate::{
     angle::Angle,
     quaternion::get_rotation,
     scene_buffer::{SceneBufferBuilder, SceneEntity},
-    vector3::{X, Y, Z},
+    vector3::Y,
 };
 
 fn get_canvas() -> HtmlCanvasElement {
@@ -92,10 +94,19 @@ async fn run() {
 
     let mut angle = 0.0;
 
+    let mut camera = Camera::new(
+        0.5,
+        (0.0, 0.0, -10.0),
+        get_rotation(Angle::from_degrees(0.0), (0.0, 1.0, 0.0)),
+        0.001,
+        1000.0,
+    );
+
     let ctx = WgpuContext::new(&get_canvas()).await;
 
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
+
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         // Only do one full turn
         if angle > 360.0 {
@@ -104,7 +115,10 @@ async fn run() {
             return;
         }
 
-        ctx.render(make_scene(angle)).unwrap();
+        let rot = get_rotation(Angle::from_degrees(angle), (0.0, 1.0, 0.0));
+        camera.orientation = rot;
+        ctx.render(make_scene(0.0), &camera).unwrap();
+
         angle += 1.0;
 
         // Schedule ourself for another requestAnimationFrame callback.

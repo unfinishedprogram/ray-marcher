@@ -21,6 +21,16 @@ const ROTATE = 4u;
 var<private> STACK_PTR:u32 = 0u;
 var<private> STACK_ITEMS:array<SceneItem, STACK_SIZE>; 
 
+
+
+struct Camera {
+    position: vec3<f32>,
+    fov: f32,
+    orientation: vec4<f32>,
+    clip_near: f32,
+    clip_far: f32,
+}
+
 // Base stack item mostly for padding
 // All scene items must have a "render" property, 
 // if it's value is 0 it is not rendered directly
@@ -202,8 +212,12 @@ fn surface_normal(point:vec3<f32>) -> vec3<f32> {
 
 @group(0) @binding(0) 
 var<uniform> dimensions: vec4<f32>;
+
 @group(0) @binding(1) 
 var<uniform> scene: Scene;
+
+@group(0) @binding(2) 
+var<uniform> camera: Camera;
 
 
 struct Input {
@@ -219,11 +233,10 @@ fn main(in: Input) -> @location(0) vec4<f32> {
 
     let aspected = (normalized ) * vec4<f32>(aspect_ratio, 1.0, 1.0, 1.0);
 
-    let ray_direction = normalize(vec3(aspected.x, -aspected.y, 1.0));
-    let ray_origin = vec3<f32>(0.0, 0.0, -10.0);
-
-    var ray_length:f32 = CLIP_NEAR;
-
+    let ray_dir = normalize(vec3(aspected.x, -aspected.y, 1.0));
+    let ray_direction = applyRotation(ray_dir, camera.orientation);
+    let ray_origin = camera.position;
+    var ray_length:f32 = camera.clip_near;
     var steps:u32 = 0u;
     
     loop {

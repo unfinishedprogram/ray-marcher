@@ -3,7 +3,7 @@ use wgpu::{
     InstanceDescriptor, RenderPipeline, ShaderModule,
 };
 
-use crate::scene_buffer::SceneBuffers;
+use crate::{camera::Camera, scene_buffer::SceneBuffers};
 
 pub struct WgpuContext {
     pub surface: wgpu::Surface,
@@ -97,6 +97,16 @@ impl WgpuContext {
                     },
                     count: None,
                 },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -155,7 +165,7 @@ impl WgpuContext {
         }
     }
 
-    pub fn render(&self, scene: SceneBuffers) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&self, scene: SceneBuffers, camera: &Camera) -> Result<(), wgpu::SurfaceError> {
         let output_texture = self.surface.get_current_texture()?;
 
         let view = output_texture
@@ -172,6 +182,7 @@ impl WgpuContext {
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Dimension Buffer"),
+                // Padded to 16 bytes, uniforms must be.
                 contents: bytemuck::bytes_of(&[self.size.0 as f32, self.size.1 as f32, 1.0, 1.0]),
                 usage: wgpu::BufferUsages::UNIFORM,
             });
@@ -179,8 +190,16 @@ impl WgpuContext {
         let scene_data = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Scene Uniform"),
+                label: Some("Scene Buffer"),
                 contents: bytemuck::bytes_of(&scene),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let camera_uniform = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Camera Buffer"),
+                contents: bytemuck::bytes_of(camera),
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
@@ -196,6 +215,10 @@ impl WgpuContext {
                     wgpu::BindGroupEntry {
                         binding: 1,
                         resource: scene_data.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: camera_uniform.as_entire_binding(),
                     },
                 ],
             });

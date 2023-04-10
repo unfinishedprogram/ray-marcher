@@ -1,40 +1,46 @@
+use bytemuck::{Pod, Zeroable};
+
 use crate::{
     angle::Angle,
     quaternion::Quaternion,
     vector3::{Vec3, Vector3},
 };
 
-#[repr(C)]
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Debug)]
 pub struct Camera {
-    pub fov: Angle,
     pub position: Vec3,
+    pub fov: f32,
     pub orientation: Quaternion,
-    pub clip_plane: (f32, f32),
-    pub aspect_ratio: f32,
+    pub clip_near: f32,
+    pub clip_far: f32,
 }
+
+unsafe impl Pod for Camera {}
+unsafe impl Zeroable for Camera {}
 
 impl Camera {
     pub fn new(
-        fov: Angle,
-        aspect_ratio: f32,
+        fov: f32,
         position: Vec3,
         orientation: Quaternion,
-        clip_plane: (f32, f32),
+        clip_near: f32,
+        clip_far: f32,
     ) -> Self {
         Camera {
             fov,
-            aspect_ratio,
             position,
             orientation,
-            clip_plane,
+            clip_near,
+            clip_far,
         }
     }
 
     pub fn get_ray_direction(&self, x: f32, y: f32) -> Vec3 {
         let y = -y + 0.5;
-        let x = (x - 0.5) * self.aspect_ratio;
+        let x = x - 0.5;
 
-        (x, y, self.clip_plane.0)
+        (x, y, self.clip_near)
             .normalize()
             .apply_rotation(self.orientation)
     }

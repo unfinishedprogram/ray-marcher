@@ -51,7 +51,7 @@ pub fn get_rotation(angle: Angle, (x, y, z): Vec3) -> Quaternion {
 pub fn rotation_from_to(from: Vec3, to: Vec3) -> Quaternion {
     let (x, y, z) = to.cross(from);
     let w = (to.magnitude_sq() * from.magnitude_sq()).sqrt() + to.dot(from);
-    normalize((w, x, y, z))
+    normalize((x, y, z, w))
 }
 
 pub fn normalize((a, b, c, d): Quaternion) -> Quaternion {
