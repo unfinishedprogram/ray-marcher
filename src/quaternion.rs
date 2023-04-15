@@ -45,7 +45,7 @@ pub fn identity_quaternion() -> Quaternion {
 
 pub fn get_rotation(angle: Angle, (x, y, z): Vec3) -> Quaternion {
     let (sin_a, cos_a) = (angle.rad() / 2.0).sin_cos();
-    (sin_a * x, sin_a * y, sin_a * z, cos_a)
+    (cos_a, sin_a * x, sin_a * y, sin_a * z)
 }
 
 pub fn rotation_from_to(from: Vec3, to: Vec3) -> Quaternion {
@@ -60,11 +60,11 @@ pub fn normalize((a, b, c, d): Quaternion) -> Quaternion {
     (a * mul, b * mul, c * mul, d * mul)
 }
 
-pub fn hamilton_product(a: Quaternion, b: Quaternion) -> Quaternion {
+pub fn multiply(a: Quaternion, b: Quaternion) -> Quaternion {
     (
-        (a.0 * b.0 - a.1 * b.1 - a.2 * b.2 - a.3 * b.3),
-        (a.0 * b.1 + a.1 * b.0 + a.2 * b.3 - a.3 * b.2),
-        (a.0 * b.2 - a.1 * b.3 + a.2 * b.0 + a.3 * b.1),
-        (a.0 * b.3 + a.1 * b.2 - a.2 * b.1 + a.3 * b.0),
+        a.0 * b.0 - a.1 * b.1 - a.2 * b.2 - a.3 * b.3,
+        a.0 * b.1 + a.1 * b.0 + a.2 * b.3 - a.3 * b.2,
+        a.0 * b.2 - a.1 * b.3 + a.2 * b.0 + a.3 * b.1,
+        a.0 * b.3 + a.1 * b.2 - a.2 * b.1 + a.3 * b.0,
     )
 }

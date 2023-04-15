@@ -19,7 +19,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use camera::Camera;
 use gloo::utils::window;
-use quaternion::rotation_from_to;
+use quaternion::multiply;
 use scene_buffer::SceneBuffers;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
@@ -92,34 +92,55 @@ async fn run() {
     std::panic::set_hook(std::boxed::Box::new(console_error_panic_hook::hook));
     console_log::init().expect("could not initialize logger");
 
-    let mut angle = 0.0;
+    let mouse_pos = Rc::new(RefCell::new((0, 0)));
 
-    let mut camera = Camera::new(
-        0.5,
-        (0.0, 0.0, -10.0),
-        get_rotation(Angle::from_degrees(0.0), (0.0, 1.0, 0.0)),
-        0.001,
-        1000.0,
-    );
+    let mut camera = Camera::new(0.5, (0.0, 0.0, -10.0), (0.0, 0.0, 0.0, 1.0), 0.001, 1000.0);
 
-    let ctx = WgpuContext::new(&get_canvas()).await;
+    let canvas = get_canvas();
+    let m = mouse_pos.clone();
+
+    let mouse_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
+        let mut mouse = m.borrow_mut();
+        mouse.0 += event.movement_x();
+        mouse.1 += event.movement_y();
+    });
+
+    let click_closure = Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
+        gloo::console::console_dbg!("REQUEST PTR LOCK");
+        get_canvas().request_pointer_lock();
+    });
+
+    let ctx = WgpuContext::new(&canvas).await;
+
+    canvas
+        .add_event_listener_with_callback("mousemove", mouse_closure.as_ref().unchecked_ref())
+        .unwrap();
+
+    canvas
+        .add_event_listener_with_callback("click", click_closure.as_ref().unchecked_ref())
+        .unwrap();
+
+    mouse_closure.forget();
+    click_closure.forget();
 
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
 
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        // Only do one full turn
-        if angle > 360.0 {
-            // Drop our handle to this closure so that it will get cleaned
-            let _ = f.borrow_mut().take();
-            return;
-        }
+        let mut mouse = mouse_pos.borrow_mut();
 
-        let rot = get_rotation(Angle::from_degrees(angle), (0.0, 1.0, 0.0));
-        camera.orientation = rot;
+        let yaw = (-mouse.0 as f32) / 10.0;
+        let pitch = (mouse.1 as f32) / 10.0;
+
+        // Reset mouse delta values since change has been handled
+        (mouse.0, mouse.1) = (0, 0);
+
+        let yaw_quat = get_rotation(Angle::from_degrees(yaw), (0.0, 1.0, 0.0));
+        let pitch_quat = get_rotation(Angle::from_degrees(pitch), (0.0, 0.0, 1.0));
+
+        camera.orientation = multiply(multiply(yaw_quat, camera.orientation), pitch_quat);
+
         ctx.render(make_scene(0.0), &camera).unwrap();
-
-        angle += 1.0;
 
         // Schedule ourself for another requestAnimationFrame callback.
         request_animation_frame(f.borrow().as_ref().unwrap());
