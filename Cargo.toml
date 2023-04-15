@@ -17,6 +17,7 @@ web-sys = { version = "0.3.61", features = [
     'Window',
     'HtmlCanvasElement',
     'MouseEvent',
+    'KeyboardEvent',
 ] }
 
 bytemuck = { version = "1.13.1", features = ["derive"] }
@@ -27,7 +28,6 @@ image = "0.24.5"
 rayon = "1.7.0"
 wasm-bindgen-futures = "0.4.34"
 
-# TODO: Update to 0.15 once panic on wasm has been fixed
 wgpu = { version = "0.15.1", features = ["webgl"] }
 
 log = "0.4.17"

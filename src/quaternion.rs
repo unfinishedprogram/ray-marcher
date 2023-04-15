@@ -14,7 +14,7 @@ pub trait Quat {
 impl Quat for Quaternion {
     fn is_identity(&self) -> bool {
         let (a, b, c, d) = *self;
-        a == 1.0 && b == 0.0 && c == 0.0 && d == 0.0
+        a == 0.0 && b == 0.0 && c == 0.0 && d == 1.0
     }
 
     fn magnitude_sq(self) -> f32 {
@@ -23,10 +23,8 @@ impl Quat for Quaternion {
     }
 
     fn inverse(self) -> Quaternion {
-        let (a, b, c, d) = self;
-        let conjugate = (a, -b, -c, -d);
-        let magnitude = self.magnitude_sq();
-        conjugate.multiply_scalar(1.0 / magnitude)
+        let (x, y, z, w) = self;
+        (-x, -y, -z, w)
     }
 
     fn multiply_scalar(self, scalar: f32) -> Quaternion {
@@ -40,7 +38,7 @@ impl Quat for Quaternion {
 }
 
 pub fn identity_quaternion() -> Quaternion {
-    (1.0, 0.0, 0.0, 0.0)
+    (0.0, 0.0, 0.0, 1.0)
 }
 
 pub fn get_rotation(angle: Angle, (x, y, z): Vec3) -> Quaternion {

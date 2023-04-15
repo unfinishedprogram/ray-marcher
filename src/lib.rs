@@ -4,6 +4,7 @@
 mod angle;
 mod camera;
 mod entity;
+mod input_handler;
 mod light;
 mod material;
 mod quaternion;
@@ -18,9 +19,11 @@ mod wgpu_context;
 use std::{cell::RefCell, rc::Rc};
 
 use camera::Camera;
-use gloo::utils::window;
+use gloo::utils::{body, window};
+use input_handler::InputHandler;
 use quaternion::multiply;
 use scene_buffer::SceneBuffers;
+use vector3::Vector3;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
 use wgpu_context::WgpuContext;
@@ -93,11 +96,13 @@ async fn run() {
     console_log::init().expect("could not initialize logger");
 
     let mouse_pos = Rc::new(RefCell::new((0, 0)));
-
     let mut camera = Camera::new(0.5, (0.0, 0.0, -10.0), (0.0, 0.0, 0.0, 1.0), 0.001, 1000.0);
 
     let canvas = get_canvas();
     let m = mouse_pos.clone();
+
+    let mut yaw = 0.0;
+    let mut pitch = 0.0;
 
     let mouse_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
         let mut mouse = m.borrow_mut();
@@ -111,6 +116,8 @@ async fn run() {
     });
 
     let ctx = WgpuContext::new(&canvas).await;
+
+    let input_handler = InputHandler::new(&body());
 
     canvas
         .add_event_listener_with_callback("mousemove", mouse_closure.as_ref().unchecked_ref())
@@ -129,16 +136,25 @@ async fn run() {
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         let mut mouse = mouse_pos.borrow_mut();
 
-        let yaw = (-mouse.0 as f32) / 10.0;
-        let pitch = (mouse.1 as f32) / 10.0;
+        yaw += (-mouse.0 as f32) / 10.0;
+        pitch += (-mouse.1 as f32) / 10.0;
+        pitch = pitch.clamp(-45.0, 45.0);
+        yaw %= 360.0;
 
         // Reset mouse delta values since change has been handled
         (mouse.0, mouse.1) = (0, 0);
 
-        let yaw_quat = get_rotation(Angle::from_degrees(yaw), (0.0, 1.0, 0.0));
-        let pitch_quat = get_rotation(Angle::from_degrees(pitch), (0.0, 0.0, 1.0));
+        let yaw_quat = get_rotation(Angle::from_degrees(yaw), Y);
+        let pitch_quat = get_rotation(Angle::from_degrees(pitch), (0.0, 0.0, -1.0));
 
-        camera.orientation = multiply(multiply(yaw_quat, camera.orientation), pitch_quat);
+        // camera.orientation = multiply(multiply(yaw_quat, camera.orientation), pitch_quat);
+        camera.orientation = multiply(multiply(yaw_quat, (0.0, 0.0, 0.0, 1.0)), pitch_quat);
+
+        camera.position.add_assign(
+            input_handler
+                .get_movement(0.5)
+                .apply_rotation(get_rotation(Angle::from_degrees(yaw), Y)),
+        );
 
         ctx.render(make_scene(0.0), &camera).unwrap();
 

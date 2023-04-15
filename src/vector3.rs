@@ -60,11 +60,9 @@ impl Vector3 for Vec3 {
         )
     }
 
-    fn apply_rotation(self, r: Quaternion) -> Vec3 {
-        let r = r.inverse();
+    fn apply_rotation(self, (x, y, z, s): Quaternion) -> Vec3 {
         let v = self;
-        let (s, x, y, z) = r;
-        let u = (x, y, z);
+        let u = (x, y, z).multiply_scalar(-1.0);
 
         let a = u.multiply_scalar(u.dot(v) * 2.0);
         let b = v.multiply_scalar((s * s) - u.dot(u));
