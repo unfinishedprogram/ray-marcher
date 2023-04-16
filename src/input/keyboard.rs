@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::vector3::{Vec3, Vector3};
 
-pub struct InputHandler {
+pub struct KeyboardHandler {
     keys_pressed: Rc<RefCell<HashSet<String>>>,
 }
 
@@ -16,8 +16,8 @@ fn bool_tuple_to_vec((a, b, c): (bool, bool, bool)) -> Vec3 {
     (x, y, z)
 }
 
-impl InputHandler {
-    pub fn new(element: &web_sys::Element) -> Self {
+impl KeyboardHandler {
+    pub fn new(element: &web_sys::HtmlElement) -> Self {
         let keys_pressed = Rc::new(RefCell::new(HashSet::new()));
 
         let k = keys_pressed.clone();
@@ -51,13 +51,11 @@ impl InputHandler {
     }
 
     // Returns a vector representing the players directed movement in 3D
-    pub fn get_movement(&self, speed: f32) -> Vec3 {
+    pub fn movement(&self) -> Vec3 {
         let positive = bool_tuple_to_vec((self.is_down("d"), self.is_down("q"), self.is_down("s")));
         let negative = bool_tuple_to_vec((self.is_down("a"), self.is_down("e"), self.is_down("w")))
             .multiply_scalar(-1.0);
 
-        Vector3::add(positive, negative)
-            .normalize()
-            .multiply_scalar(speed)
+        Vector3::add(positive, negative).normalize()
     }
 }
