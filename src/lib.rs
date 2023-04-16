@@ -25,6 +25,7 @@ use quaternion::multiply;
 use scene_buffer::SceneBuffers;
 use vector3::Vector3;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlCanvasElement;
 use wgpu_context::WgpuContext;
 
@@ -44,18 +45,18 @@ fn get_canvas() -> HtmlCanvasElement {
     .expect("Not a valid canvas element")
 }
 
-fn make_scene(angle: f32) -> SceneBuffers {
+fn make_scene() -> SceneBuffers {
     let mut scene_buffer = SceneBufferBuilder::new();
 
     scene_buffer.push(SceneEntity::Box {
         render: 0,
-        dimensions: (100.0, 1.0, 100.0),
+        dimensions: (10.0, 1.0, 10.0),
     });
 
     scene_buffer.push(SceneEntity::Translate {
         render: 1,
         pointer: 0,
-        v: (0.0, -5.0, 0.0),
+        v: (0.0, -2.0, 0.0),
     });
 
     scene_buffer.push(SceneEntity::Box {
@@ -64,15 +65,9 @@ fn make_scene(angle: f32) -> SceneBuffers {
     });
 
     scene_buffer.push(SceneEntity::Translate {
-        render: 0,
-        pointer: 2,
-        v: (0.0, -2.0, 0.0),
-    });
-
-    scene_buffer.push(SceneEntity::Rotate {
         render: 1,
-        pointer: 3,
-        q: get_rotation(Angle::from_degrees(angle), Y),
+        pointer: 2,
+        v: (-2.0, 0.0, 0.0),
     });
 
     scene_buffer.push(SceneEntity::Sphere {
@@ -90,11 +85,17 @@ fn request_animation_frame(f: &Closure<dyn FnMut()>) {
 }
 
 #[wasm_bindgen(start)]
-async fn run() {
-    log::set_max_level(log::LevelFilter::Info);
+fn start() {
+    log::set_max_level(log::LevelFilter::Warn);
     std::panic::set_hook(std::boxed::Box::new(console_error_panic_hook::hook));
     console_log::init().expect("could not initialize logger");
 
+    log::error!("Testing!");
+
+    spawn_local(run())
+}
+
+async fn run() {
     let mouse_pos = Rc::new(RefCell::new((0, 0)));
     let mut camera = Camera::new(0.5, (0.0, 0.0, -10.0), (0.0, 0.0, 0.0, 1.0), 0.001, 1000.0);
 
@@ -115,8 +116,6 @@ async fn run() {
         get_canvas().request_pointer_lock();
     });
 
-    let ctx = WgpuContext::new(&canvas).await;
-
     let input_handler = InputHandler::new(&body());
 
     canvas
@@ -132,6 +131,8 @@ async fn run() {
 
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
+
+    let ctx = WgpuContext::new(&canvas).await;
 
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         let mut mouse = mouse_pos.borrow_mut();
@@ -156,7 +157,7 @@ async fn run() {
                 .apply_rotation(get_rotation(Angle::from_degrees(yaw), Y)),
         );
 
-        ctx.render(make_scene(0.0), &camera).unwrap();
+        ctx.render(make_scene(), &camera).unwrap();
 
         // Schedule ourself for another requestAnimationFrame callback.
         request_animation_frame(f.borrow().as_ref().unwrap());

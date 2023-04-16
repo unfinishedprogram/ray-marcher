@@ -5,7 +5,10 @@ const MAX_SIGNED_DISTANCE = 10000.0;
 const MAX_MARCH_STEPS = 255u;
 
 const CLIP_NEAR:f32 = 0.001;
-const CLIP_FAR:f32 = 10000.0;
+const CLIP_FAR:f32 = 100.0;
+
+const AO_STEPS:i32 = 4;
+const AO_DISTANCE: f32 = 0.25;
 
 const THRESHOLD:f32 = 0.001;
 
@@ -20,8 +23,6 @@ const ROTATE = 4u;
 
 var<private> STACK_PTR:u32 = 0u;
 var<private> STACK_ITEMS:array<SceneItem, STACK_SIZE>; 
-
-
 
 struct Camera {
     position: vec3<f32>,
@@ -140,7 +141,6 @@ fn push(item:SceneItem) {
     STACK_PTR += 1u;
 }
 
-
 fn applyRotation(v:vec3<f32>, rv:vec4<f32>) -> vec3<f32>{
     let r = rv * vec4<f32>(-1.0, -1.0, -1.0, 1.0);
     let s = r.w;
@@ -151,6 +151,17 @@ fn applyRotation(v:vec3<f32>, rv:vec4<f32>) -> vec3<f32>{
     return a + b + c;
 }
 
+fn ambient_occlusion(point:vec3<f32>, normal:vec3<f32>) -> f32 {
+    var occlusion = 0.0;
+    var i = 1;
+    while i <= AO_STEPS {
+        i++;
+        let distance = f32(AO_DISTANCE) / f32(AO_STEPS) * f32(i);
+        let d = map(point + (normal * distance));
+        occlusion += max(-(d - distance), 0.0);
+    }
+    return occlusion/f32(AO_DISTANCE * f32(AO_STEPS) * 4.0);
+}
 
 fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
     var signed_distance:f32 = MAX_SIGNED_DISTANCE;
@@ -231,19 +242,19 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     // Normalize the pixel coordonates to -0.5 - 0.5;
     let normalized = in.screen_cords / vec4<f32>(dimensions.x, dimensions.y, 1.0, 1.0) - vec4<f32>(0.5);
 
-    let aspected = (normalized ) * vec4<f32>(aspect_ratio, 1.0, 1.0, 1.0);
+    let aspected = normalized * vec4<f32>(aspect_ratio, 1.0, 1.0, 1.0);
 
     let ray_dir = normalize(vec3(aspected.x, -aspected.y, 1.0));
     let ray_direction = applyRotation(ray_dir, camera.orientation);
     let ray_origin = camera.position;
     var ray_length:f32 = camera.clip_near;
     var steps:u32 = 0u;
-    
+    // 42
     loop {
         let point = ray_origin + (ray_direction * ray_length);
         let min_signed_distance = map(point);
-        if ray_length >= CLIP_FAR { break; }
-        if min_signed_distance <= THRESHOLD { break; }
+        if ray_length > CLIP_FAR { break; }
+        if min_signed_distance < THRESHOLD { break; }
         ray_length += min_signed_distance;
         steps++;
         if steps > MAX_MARCH_STEPS {break;}
@@ -252,5 +263,8 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     let surface_point = ray_origin + ray_direction * ray_length;
     let surface_normal = surface_normal(surface_point);
 
-    return vec4<f32>(surface_normal * 0.5 + vec3<f32>(0.5), 1.0);
+    let occlusion = ambient_occlusion(surface_point, surface_normal);
+    
+    // return vec4<f32>(surface_normal * 0.5 + vec3<f32>(0.5), 1.0);
+    return vec4<f32>(vec3<f32>(f32(steps)/255.0), 1.0);
 }
