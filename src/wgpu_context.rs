@@ -115,7 +115,7 @@ impl WgpuContext {
         let render_pipeline = {
             let frag_targets = [Some(wgpu::ColorTargetState {
                 format: surface_config.format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                blend: Some(wgpu::BlendState::REPLACE),
                 write_mask: wgpu::ColorWrites::ALL,
             })];
 
