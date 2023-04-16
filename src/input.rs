@@ -20,7 +20,7 @@ impl Input {
         Self {
             keyboard: KeyboardHandler::new(&body()),
             mouse: MouseHandler::new(element),
-            movement_speed: 0.5,
+            movement_speed: 0.25,
             sensitivity: 0.1,
         }
     }

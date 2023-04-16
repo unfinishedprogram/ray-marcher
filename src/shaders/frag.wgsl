@@ -1,5 +1,6 @@
 const STACK_SIZE = 8u;
 const MAX_ENTITIES = 8u;
+const MAX_LIGHTS = 8u;
 
 const MAX_SIGNED_DISTANCE = 10000.0;
 const MAX_MARCH_STEPS = 255u;
@@ -48,6 +49,17 @@ struct SceneItem {
 
 struct Scene {
     entities: array<SceneItem, MAX_ENTITIES>,
+}
+
+struct Light {
+    position: vec3<f32>,
+    radius: f32,
+    color: vec3<f32>,
+    enabled: u32,
+}
+
+struct Lights {
+    lights: array<Light, MAX_LIGHTS>
 }
 
 // "Inherits" SceneItem
@@ -163,6 +175,57 @@ fn ambient_occlusion(point:vec3<f32>, normal:vec3<f32>) -> f32 {
     return occlusion/f32(AO_DISTANCE * f32(AO_STEPS) * 4.0);
 }
 
+fn direct_lighting(point:vec3<f32>, normal:vec3<f32>) -> vec3<f32> {
+    var light = vec3<f32>(0.0);
+
+    for (var i = 0u; i < MAX_LIGHTS; i++) {
+        let l = lights.lights[i];
+
+        if l.enabled == 0u { return light; }
+
+        let delta = l.position - point;
+        let dir = normalize(delta);
+
+        let distance = length(delta);
+        let angle = dot(dir, normal);
+
+        var power = (angle / distance);
+
+        // Edge case optimization
+        if power > 0.0 {
+            power *= trace_shadow(point, l);
+        }
+        
+        light += l.color * power;
+    }
+    
+    return light;
+}
+
+fn trace_shadow(point:vec3<f32>, light: Light) -> f32 {
+    var res: f32 = 1.0;
+
+    let max_t = length(light.position - point);
+    let normal = normalize(light.position - point);
+    var t = 0.01;
+
+    for(var i = 0u; i < MAX_MARCH_STEPS; i++){
+
+        let h = map(point + (normal * t));
+
+        res = min(res, h / (light.radius * t));
+        t += max(h, 0.01);
+
+        if res < -1.0 || t > max_t {
+            break;
+        }
+    }
+
+    res = max(res, -1.0);
+
+    return 0.25 * (1.0 + res) * (1.0 + res) * (2.0 - res);
+}
+
 fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
     var signed_distance:f32 = MAX_SIGNED_DISTANCE;
     var transformed_point:vec3<f32> = point;
@@ -227,9 +290,11 @@ var<uniform> dimensions: vec4<f32>;
 @group(0) @binding(1) 
 var<uniform> scene: Scene;
 
-@group(0) @binding(2) 
-var<uniform> camera: Camera;
+@group(0) @binding(2)
+var<uniform> lights: Lights;
 
+@group(0) @binding(3) 
+var<uniform> camera: Camera;
 
 struct Input {
     @builtin(position) screen_cords: vec4<f32>,
@@ -249,7 +314,7 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     let ray_origin = camera.position;
     var ray_length:f32 = camera.clip_near;
     var steps:u32 = 0u;
-    // 42
+
     loop {
         let point = ray_origin + (ray_direction * ray_length);
         let min_signed_distance = map(point);
@@ -263,8 +328,18 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     let surface_point = ray_origin + ray_direction * ray_length;
     let surface_normal = surface_normal(surface_point);
 
-    let occlusion = ambient_occlusion(surface_point, surface_normal);
+    // let occlusion = ambient_occlusion(surface_point, surface_normal);
+
+    var color = vec3<f32>(0.0);
+
+    if length(surface_point) < 100.0 {
+        color = direct_lighting(surface_point, surface_normal);
+    } 
     
+    
+
     // return vec4<f32>(surface_normal * 0.5 + vec3<f32>(0.5), 1.0);
-    return vec4<f32>(vec3<f32>(f32(steps)/255.0), 1.0);
+
+
+    return vec4<f32>(color, 1.0);
 }

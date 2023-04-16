@@ -3,7 +3,7 @@ use wgpu::{
     InstanceDescriptor, RenderPipeline, ShaderModule,
 };
 
-use crate::{camera::Camera, scene_buffer::SceneBuffers};
+use crate::{camera::Camera, light_buffers::LightBuffers, scene_buffer::SceneBuffers};
 
 pub struct WgpuContext {
     pub surface: wgpu::Surface,
@@ -107,6 +107,16 @@ impl WgpuContext {
                     },
                     count: None,
                 },
+                BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -165,7 +175,13 @@ impl WgpuContext {
         }
     }
 
-    pub fn render(&self, scene: SceneBuffers, camera: &Camera) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(
+        &self,
+        scene: (SceneBuffers, LightBuffers),
+        camera: &Camera,
+    ) -> Result<(), wgpu::SurfaceError> {
+        let (scene, lights) = scene;
+
         let output_texture = self.surface.get_current_texture()?;
 
         let view = output_texture
@@ -195,6 +211,14 @@ impl WgpuContext {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
+        let light_data = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Light Buffer"),
+                contents: bytemuck::bytes_of(&lights),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
         let camera_uniform = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -218,6 +242,10 @@ impl WgpuContext {
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
+                        resource: light_data.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
                         resource: camera_uniform.as_entire_binding(),
                     },
                 ],

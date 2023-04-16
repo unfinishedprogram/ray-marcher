@@ -6,6 +6,7 @@ mod camera;
 mod entity;
 mod input;
 mod light;
+mod light_buffers;
 mod quaternion;
 mod render;
 mod scene;
@@ -20,6 +21,7 @@ use std::{cell::RefCell, rc::Rc};
 use camera::Camera;
 use gloo::utils::window;
 use input::Input;
+use light_buffers::{Light, LightBufferBuilder, LightBuffers};
 use quaternion::multiply;
 use scene_buffer::SceneBuffers;
 use vector3::Vector3;
@@ -43,28 +45,28 @@ fn get_canvas() -> HtmlCanvasElement {
     .expect("Not a valid canvas element")
 }
 
-pub fn make_scene() -> SceneBuffers {
+pub fn make_scene() -> (SceneBuffers, LightBuffers) {
     let mut scene_buffer = SceneBufferBuilder::new();
 
-    scene_buffer.push(SceneEntity::Box {
+    let floor = scene_buffer.push(SceneEntity::Box {
         render: 0,
         dimensions: (10.0, 1.0, 10.0),
     });
 
     scene_buffer.push(SceneEntity::Translate {
         render: 1,
-        pointer: 0,
+        pointer: floor,
         v: (0.0, -2.0, 0.0),
     });
 
-    scene_buffer.push(SceneEntity::Box {
+    let b = scene_buffer.push(SceneEntity::Box {
         render: 0,
         dimensions: (1.0, 1.0, 1.0),
     });
 
     scene_buffer.push(SceneEntity::Translate {
         render: 1,
-        pointer: 2,
+        pointer: b,
         v: (-2.0, 0.0, 0.0),
     });
 
@@ -73,7 +75,23 @@ pub fn make_scene() -> SceneBuffers {
         radius: 1.0,
     });
 
-    scene_buffer.build()
+    let mut light_buffer = LightBufferBuilder::new();
+
+    light_buffer.add(Light {
+        position: (2.0, 3.0, 2.0),
+        radius: 0.2,
+        color: (0.2, 0.2, 1.0),
+        enabled: 1,
+    });
+
+    light_buffer.add(Light {
+        position: (-2.0, 3.0, 2.0),
+        radius: 0.2,
+        color: (1.0, 0.2, 0.2),
+        enabled: 1,
+    });
+
+    (scene_buffer.build(), light_buffer.build())
 }
 
 fn request_animation_frame(f: &Closure<dyn FnMut()>) {
@@ -103,7 +121,7 @@ pub async fn run() {
         yaw -= mouse.0;
         pitch -= mouse.1;
 
-        pitch = pitch.clamp(-45.0, 45.0);
+        pitch = pitch.clamp(-90.0, 90.0);
         yaw %= 360.0;
 
         let yaw_quat = get_rotation(Angle::from_degrees(yaw), Y);
