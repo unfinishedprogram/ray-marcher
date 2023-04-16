@@ -4,9 +4,8 @@
 mod angle;
 mod camera;
 mod entity;
-mod input_handler;
+mod input;
 mod light;
-mod material;
 mod quaternion;
 mod render;
 mod scene;
@@ -19,13 +18,12 @@ mod wgpu_context;
 use std::{cell::RefCell, rc::Rc};
 
 use camera::Camera;
-use gloo::utils::{body, window};
-use input_handler::InputHandler;
+use gloo::utils::window;
+use input::Input;
 use quaternion::multiply;
 use scene_buffer::SceneBuffers;
 use vector3::Vector3;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlCanvasElement;
 use wgpu_context::WgpuContext;
 
@@ -45,7 +43,7 @@ fn get_canvas() -> HtmlCanvasElement {
     .expect("Not a valid canvas element")
 }
 
-fn make_scene() -> SceneBuffers {
+pub fn make_scene() -> SceneBuffers {
     let mut scene_buffer = SceneBufferBuilder::new();
 
     scene_buffer.push(SceneEntity::Box {
@@ -84,50 +82,15 @@ fn request_animation_frame(f: &Closure<dyn FnMut()>) {
         .expect("should register `requestAnimationFrame` OK");
 }
 
-#[wasm_bindgen(start)]
-fn start() {
-    log::set_max_level(log::LevelFilter::Warn);
-    std::panic::set_hook(std::boxed::Box::new(console_error_panic_hook::hook));
-    console_log::init().expect("could not initialize logger");
-
-    log::error!("Testing!");
-
-    spawn_local(run())
-}
-
-async fn run() {
-    let mouse_pos = Rc::new(RefCell::new((0, 0)));
+pub async fn run() {
     let mut camera = Camera::new(0.5, (0.0, 0.0, -10.0), (0.0, 0.0, 0.0, 1.0), 0.001, 1000.0);
 
     let canvas = get_canvas();
-    let m = mouse_pos.clone();
 
     let mut yaw = 0.0;
     let mut pitch = 0.0;
 
-    let mouse_closure = Closure::<dyn FnMut(_)>::new(move |event: web_sys::MouseEvent| {
-        let mut mouse = m.borrow_mut();
-        mouse.0 += event.movement_x();
-        mouse.1 += event.movement_y();
-    });
-
-    let click_closure = Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
-        gloo::console::console_dbg!("REQUEST PTR LOCK");
-        get_canvas().request_pointer_lock();
-    });
-
-    let input_handler = InputHandler::new(&body());
-
-    canvas
-        .add_event_listener_with_callback("mousemove", mouse_closure.as_ref().unchecked_ref())
-        .unwrap();
-
-    canvas
-        .add_event_listener_with_callback("click", click_closure.as_ref().unchecked_ref())
-        .unwrap();
-
-    mouse_closure.forget();
-    click_closure.forget();
+    let mut input = Input::new(&get_canvas());
 
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
@@ -135,15 +98,13 @@ async fn run() {
     let ctx = WgpuContext::new(&canvas).await;
 
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        let mut mouse = mouse_pos.borrow_mut();
+        let mouse = input.mouse_movement();
 
-        yaw += (-mouse.0 as f32) / 10.0;
-        pitch += (-mouse.1 as f32) / 10.0;
+        yaw -= mouse.0;
+        pitch -= mouse.1;
+
         pitch = pitch.clamp(-45.0, 45.0);
         yaw %= 360.0;
-
-        // Reset mouse delta values since change has been handled
-        (mouse.0, mouse.1) = (0, 0);
 
         let yaw_quat = get_rotation(Angle::from_degrees(yaw), Y);
         let pitch_quat = get_rotation(Angle::from_degrees(pitch), (0.0, 0.0, -1.0));
@@ -152,8 +113,8 @@ async fn run() {
         camera.orientation = multiply(multiply(yaw_quat, (0.0, 0.0, 0.0, 1.0)), pitch_quat);
 
         camera.position.add_assign(
-            input_handler
-                .get_movement(0.5)
+            input
+                .keyboard_movement()
                 .apply_rotation(get_rotation(Angle::from_degrees(yaw), Y)),
         );
 

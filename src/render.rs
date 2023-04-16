@@ -76,10 +76,12 @@ fn get_light_buffer(scene: &Scene, surface: &Vec<Vec3>, normal: &Vec<Vec3>) -> V
 }
 
 fn get_albedo_buffer(scene: &Scene, surface: &Vec<Vec3>) -> Vec<Vec3> {
-    surface
-        .into_par_iter()
-        .map(|&point| scene.query_entities(point).entity.material.albedo)
-        .collect()
+    vec![(0.0, 0.0, 0.0)]
+
+    // surface
+    //     .into_par_iter()
+    //     .map(|&point| scene.query_entities(point).entity.material.albedo)
+    //     .collect()
 }
 
 pub fn render(scene: &Scene, (width, height): (usize, usize)) -> RgbaImage {
