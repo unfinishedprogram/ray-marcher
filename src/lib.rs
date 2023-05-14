@@ -3,7 +3,9 @@
 
 mod angle;
 mod camera;
+mod dimensions;
 mod entity;
+mod gpu;
 mod input;
 mod light;
 mod light_buffers;
@@ -19,11 +21,11 @@ mod wgpu_context;
 use std::{cell::RefCell, rc::Rc};
 
 use camera::Camera;
+use dimensions::Dimensions;
 use gloo::utils::window;
 use input::Input;
-use light_buffers::{Light, LightBufferBuilder, LightBuffers};
+use light_buffers::{Light, LightBufferBuilder};
 use quaternion::multiply;
-use scene_buffer::SceneBuffers;
 use vector3::Vector3;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
@@ -45,7 +47,7 @@ fn get_canvas() -> HtmlCanvasElement {
     .expect("Not a valid canvas element")
 }
 
-pub fn make_scene() -> (SceneBuffers, LightBuffers) {
+pub fn make_scene() -> (SceneBufferBuilder, LightBufferBuilder) {
     let mut scene_buffer = SceneBufferBuilder::new();
 
     let floor = scene_buffer.push(SceneEntity::Box {
@@ -91,7 +93,7 @@ pub fn make_scene() -> (SceneBuffers, LightBuffers) {
         enabled: 1,
     });
 
-    (scene_buffer.build(), light_buffer.build())
+    (scene_buffer, light_buffer)
 }
 
 fn request_animation_frame(f: &Closure<dyn FnMut()>) {
@@ -113,7 +115,17 @@ pub async fn run() {
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
 
-    let ctx = WgpuContext::new(&canvas).await;
+    let (scene, lights) = make_scene();
+    let mut ctx = WgpuContext::new(
+        &canvas,
+        &[
+            (&Dimensions::new(32, 32), 0),
+            (&scene, 1),
+            (&lights, 2),
+            (&camera, 3),
+        ],
+    )
+    .await;
 
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         let mouse = input.mouse_movement();
@@ -127,7 +139,6 @@ pub async fn run() {
         let yaw_quat = get_rotation(Angle::from_degrees(yaw), Y);
         let pitch_quat = get_rotation(Angle::from_degrees(pitch), (0.0, 0.0, -1.0));
 
-        // camera.orientation = multiply(multiply(yaw_quat, camera.orientation), pitch_quat);
         camera.orientation = multiply(multiply(yaw_quat, (0.0, 0.0, 0.0, 1.0)), pitch_quat);
 
         camera.position.add_assign(

@@ -1,10 +1,7 @@
-use std::mem::size_of;
-
 use bytemuck::{Pod, Zeroable};
 const MAX_ENTITIES: usize = 8;
-const ENTITY_SIZE: usize = size_of::<SceneEntity>();
 
-use crate::{quaternion::Quaternion, vector3::Vec3};
+use crate::{gpu, quaternion::Quaternion, vector3::Vec3};
 
 type Ptr = u32;
 
@@ -38,19 +35,9 @@ pub enum SceneEntity {
 unsafe impl Pod for SceneEntity {}
 unsafe impl Zeroable for SceneEntity {}
 
-unsafe impl Pod for SceneBuffers {}
-unsafe impl Zeroable for SceneBuffers {}
-
 pub struct SceneBufferBuilder {
     entities: [SceneEntity; MAX_ENTITIES],
     entities_length: usize,
-}
-
-#[repr(C, align(16))]
-#[derive(Clone, Copy, Debug)]
-pub struct SceneBuffers {
-    entities: [u8; MAX_ENTITIES * ENTITY_SIZE],
-    entities_length: u32,
 }
 
 impl SceneBufferBuilder {
@@ -67,11 +54,20 @@ impl SceneBufferBuilder {
         self.entities_length += 1;
         index as u32
     }
+}
 
-    pub fn build(self) -> SceneBuffers {
-        SceneBuffers {
-            entities: bytemuck::cast(self.entities),
-            entities_length: self.entities_length as u32,
+impl Default for SceneBufferBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a> gpu::Resource<'a> for SceneBufferBuilder {
+    fn buffer_init_descriptor(&'a self, _binding: u32) -> wgpu::util::BufferInitDescriptor<'a> {
+        wgpu::util::BufferInitDescriptor {
+            label: Some("Scene Buffer"),
+            contents: bytemuck::bytes_of(&self.entities),
+            usage: wgpu::BufferUsages::UNIFORM,
         }
     }
 }

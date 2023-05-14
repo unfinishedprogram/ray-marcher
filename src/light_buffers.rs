@@ -1,9 +1,8 @@
 use bytemuck::{Pod, Zeroable};
 
 const MAX_LIGHTS: usize = 8;
-const LIGHT_SIZE: usize = std::mem::size_of::<Light>();
 
-use crate::vector3::Vec3;
+use crate::{gpu, vector3::Vec3};
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Default)]
@@ -17,15 +16,6 @@ pub struct Light {
 unsafe impl Pod for Light {}
 unsafe impl Zeroable for Light {}
 
-unsafe impl Pod for LightBuffers {}
-unsafe impl Zeroable for LightBuffers {}
-
-#[derive(Clone, Copy, Debug)]
-#[repr(C, align(16))]
-pub struct LightBuffers {
-    lights: [u8; MAX_LIGHTS * LIGHT_SIZE],
-    lights_length: u32,
-}
 pub struct LightBufferBuilder {
     lights: [Light; MAX_LIGHTS],
     index: usize,
@@ -42,17 +32,20 @@ impl LightBufferBuilder {
         self.lights[self.index] = light;
         self.index += 1;
     }
-
-    pub fn build(self) -> LightBuffers {
-        LightBuffers {
-            lights: bytemuck::cast(self.lights),
-            lights_length: self.lights.len() as u32,
-        }
-    }
 }
 
 impl Default for LightBufferBuilder {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<'a> gpu::Resource<'a> for LightBufferBuilder {
+    fn buffer_init_descriptor(&'a self, _binding: u32) -> wgpu::util::BufferInitDescriptor<'a> {
+        wgpu::util::BufferInitDescriptor {
+            label: Some("Light Buffer"),
+            contents: bytemuck::bytes_of(&self.lights),
+            usage: wgpu::BufferUsages::UNIFORM,
+        }
     }
 }

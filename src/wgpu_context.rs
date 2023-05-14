@@ -1,9 +1,12 @@
-use wgpu::{
-    util::DeviceExt, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
-    InstanceDescriptor, RenderPipeline, ShaderModule,
-};
+use wgpu::{InstanceDescriptor, RenderPipeline, ShaderModule};
 
-use crate::{camera::Camera, light_buffers::LightBuffers, scene_buffer::SceneBuffers};
+use crate::{
+    camera::Camera,
+    dimensions::Dimensions,
+    gpu::{Resource, ResourceGroup},
+    light_buffers::LightBufferBuilder,
+    scene_buffer::SceneBufferBuilder,
+};
 
 pub struct WgpuContext {
     pub surface: wgpu::Surface,
@@ -13,10 +16,9 @@ pub struct WgpuContext {
     pub fragment_module: ShaderModule,
     pub vertex_module: ShaderModule,
     pub render_pipeline: RenderPipeline,
+    pub dims: Dimensions,
 
-    pub size: (u32, u32),
-
-    pub bind_group_layout: BindGroupLayout,
+    pub resource_group: ResourceGroup,
 }
 
 fn load_shaders(device: &wgpu::Device) -> (ShaderModule, ShaderModule) {
@@ -26,8 +28,11 @@ fn load_shaders(device: &wgpu::Device) -> (ShaderModule, ShaderModule) {
     (vertex_module, fragment_module)
 }
 
-impl WgpuContext {
-    pub async fn new(canvas: &web_sys::HtmlCanvasElement) -> Self {
+impl<'a> WgpuContext {
+    pub async fn new(
+        canvas: &web_sys::HtmlCanvasElement,
+        resources: &'a [(&dyn Resource<'a>, u32)],
+    ) -> Self {
         log::info!("Creating Wgpu Context");
         let (width, height) = (canvas.width(), canvas.height());
         log::info!("Canvas size: {width}x{height}");
@@ -62,6 +67,8 @@ impl WgpuContext {
             .await
             .expect("Failed to request device");
 
+        let resource_group: ResourceGroup = ResourceGroup::new(&device, resources);
+
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface.get_capabilities(&adapter).formats[0],
@@ -73,52 +80,6 @@ impl WgpuContext {
         };
 
         surface.configure(&device, &surface_config);
-
-        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
 
         let (vertex_module, fragment_module) = load_shaders(&device);
 
@@ -137,7 +98,7 @@ impl WgpuContext {
 
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
+                bind_group_layouts: &[&resource_group.bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -169,18 +130,23 @@ impl WgpuContext {
             surface,
             device,
             queue,
+            resource_group,
             config: surface_config,
-            size: (width, height),
-            bind_group_layout,
+            dims: Dimensions::new(width, height),
         }
     }
 
     pub fn render(
-        &self,
-        scene: (SceneBuffers, LightBuffers),
+        &mut self,
+        scene: (SceneBufferBuilder, LightBufferBuilder),
         camera: &Camera,
     ) -> Result<(), wgpu::SurfaceError> {
         let (scene, lights) = scene;
+
+        let bind_group = self.resource_group.bind_group_entries(
+            &self.device,
+            &[(&self.dims, 0), (&scene, 1), (&lights, 2), (camera, 3)],
+        );
 
         let output_texture = self.surface.get_current_texture()?;
 
@@ -194,63 +160,7 @@ impl WgpuContext {
                 label: Some("Render Encoder"),
             });
 
-        let dimension_uniform = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Dimension Buffer"),
-                // Padded to 16 bytes, uniforms must be.
-                contents: bytemuck::bytes_of(&[self.size.0 as f32, self.size.1 as f32, 1.0, 1.0]),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        let scene_data = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Scene Buffer"),
-                contents: bytemuck::bytes_of(&scene),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        let light_data = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Light Buffer"),
-                contents: bytemuck::bytes_of(&lights),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        let camera_uniform = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::bytes_of(camera),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
         {
-            let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Main Bind group"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: dimension_uniform.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: scene_data.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: light_data.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: camera_uniform.as_entire_binding(),
-                    },
-                ],
-            });
-
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -263,7 +173,6 @@ impl WgpuContext {
                 })],
                 depth_stencil_attachment: None,
             });
-
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &bind_group, &[]);
 
