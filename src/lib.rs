@@ -50,32 +50,15 @@ fn get_canvas() -> HtmlCanvasElement {
 pub fn make_scene() -> (SceneBufferBuilder, LightBufferBuilder) {
     let mut scene_buffer = SceneBufferBuilder::new();
 
-    let floor = scene_buffer.push(SceneEntity::Box {
-        render: 0,
-        dimensions: (10.0, 1.0, 10.0),
-    });
+    scene_buffer
+        .r#box((10.0, 1.0, 10.0))
+        .translate((0.0, -2.0, 0.0));
 
-    scene_buffer.push(SceneEntity::Translate {
-        render: 1,
-        pointer: floor,
-        v: (0.0, -2.0, 0.0),
-    });
+    scene_buffer
+        .r#box((1.0, 1.0, 1.0))
+        .translate((-2.0, 0.0, 0.0));
 
-    let b = scene_buffer.push(SceneEntity::Box {
-        render: 0,
-        dimensions: (1.0, 1.0, 1.0),
-    });
-
-    scene_buffer.push(SceneEntity::Translate {
-        render: 1,
-        pointer: b,
-        v: (-2.0, 0.0, 0.0),
-    });
-
-    scene_buffer.push(SceneEntity::Sphere {
-        render: 1,
-        radius: 1.0,
-    });
+    scene_buffer.sphere(1.0);
 
     let mut light_buffer = LightBufferBuilder::new();
 

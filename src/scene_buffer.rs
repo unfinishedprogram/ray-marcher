@@ -32,6 +32,18 @@ pub enum SceneEntity {
     },
 }
 
+impl SceneEntity {
+    pub fn hide(&mut self) {
+        match self {
+            SceneEntity::Empty => {}
+            SceneEntity::Sphere { render, .. }
+            | SceneEntity::Translate { render, .. }
+            | SceneEntity::Box { render, .. }
+            | SceneEntity::Rotate { render, .. } => *render = 0,
+        }
+    }
+}
+
 unsafe impl Pod for SceneEntity {}
 unsafe impl Zeroable for SceneEntity {}
 
@@ -48,11 +60,33 @@ impl SceneBufferBuilder {
         }
     }
 
-    pub fn push(&mut self, entity: SceneEntity) -> u32 {
+    pub fn push(&mut self, entity: SceneEntity) -> &mut Self {
         let index = self.entities_length;
         self.entities[index] = entity;
         self.entities_length += 1;
-        index as u32
+        self
+    }
+
+    pub fn translate(&mut self, v: Vec3) -> &mut Self {
+        let index = self.entities_length - 1;
+        self.entities[index].hide();
+
+        self.push(SceneEntity::Translate {
+            render: 1,
+            pointer: index as u32,
+            v,
+        })
+    }
+
+    pub fn r#box(&mut self, dimensions: Vec3) -> &mut Self {
+        self.push(SceneEntity::Box {
+            render: 1,
+            dimensions,
+        })
+    }
+
+    pub fn sphere(&mut self, radius: f32) -> &mut Self {
+        self.push(SceneEntity::Sphere { render: 1, radius })
     }
 }
 
