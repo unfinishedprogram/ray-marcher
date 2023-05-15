@@ -54,11 +54,13 @@ pub fn make_scene() -> (SceneBufferBuilder, LightBufferBuilder) {
         .r#box((10.0, 1.0, 10.0))
         .translate((0.0, -2.0, 0.0));
 
-    scene_buffer
-        .r#box((1.0, 1.0, 1.0))
-        .translate((-2.0, 0.0, 0.0));
+    // scene_buffer
+    //     .r#box((1.0, 1.0, 1.0))
+    //     .translate((-2.0, 0.0, 0.0));
 
-    scene_buffer.sphere(1.0);
+    scene_buffer.cylinder(1.0, 1.0);
+
+    // scene_buffer.sphere(1.0);
 
     let mut light_buffer = LightBufferBuilder::new();
 

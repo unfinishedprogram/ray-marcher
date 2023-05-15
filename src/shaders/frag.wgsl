@@ -21,6 +21,7 @@ const SPHERE = 1u;
 const TRANSLATE = 2u;
 const BOX = 3u;
 const ROTATE = 4u;
+const CYLINDER = 5u;
 
 var<private> STACK_PTR:u32 = 0u;
 var<private> STACK_ITEMS:array<SceneItem, STACK_SIZE>; 
@@ -96,6 +97,13 @@ struct ViewRay {
     distance: f32, // Distance along ray, 
 }
 
+struct Cylinder {
+    item_type: u32,
+    render: u32, 
+    radius:f32,
+    height:f32,
+}
+
 fn as_sphere(item:SceneItem) -> Sphere {
     var sphere:Sphere;
     sphere.radius = bitcast<f32>(item.pad2);
@@ -141,6 +149,19 @@ fn as_rotate(item:SceneItem) -> Rotate {
 
     rotate.rotation = vec4<f32>(x, y, z, w);
     return rotate;
+}
+
+fn as_cylinder(item:SceneItem) -> Cylinder {
+    var cylinder:Cylinder;
+    cylinder.item_type = CYLINDER;
+
+    let r = bitcast<f32>(item.pad2);
+    let h = bitcast<f32>(item.pad3);
+
+    cylinder.radius = r;
+    cylinder.height = h;
+
+    return cylinder;
 }
 
 fn pop() -> SceneItem {
@@ -254,6 +275,11 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
             let q = abs(transformed_point) - box.dimensions;
             let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
             signed_distance = min(signed_distance, distance);
+        } else if item_type == CYLINDER {
+            let cylinder = as_cylinder(item);
+            let d = abs(vec2<f32>(length(transformed_point.xz),transformed_point.y)) - vec2<f32>(cylinder.radius,cylinder.height);
+            let sd = min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
+            signed_distance = min(signed_distance, sd);
         }
     }
 
@@ -336,10 +362,6 @@ fn main(in: Input) -> @location(0) vec4<f32> {
         color = direct_lighting(surface_point, surface_normal);
     } 
     
-    
-
     // return vec4<f32>(surface_normal * 0.5 + vec3<f32>(0.5), 1.0);
-
-
     return vec4<f32>(color, 1.0);
 }

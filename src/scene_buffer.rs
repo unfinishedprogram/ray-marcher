@@ -30,6 +30,12 @@ pub enum SceneEntity {
         pointer: Ptr,
         q: Quaternion,
     },
+
+    Cylinder {
+        render: u32,
+        radius: f32,
+        height: f32,
+    },
 }
 
 impl SceneEntity {
@@ -39,6 +45,7 @@ impl SceneEntity {
             SceneEntity::Sphere { render, .. }
             | SceneEntity::Translate { render, .. }
             | SceneEntity::Box { render, .. }
+            | SceneEntity::Cylinder { render, .. }
             | SceneEntity::Rotate { render, .. } => *render = 0,
         }
     }
@@ -87,6 +94,14 @@ impl SceneBufferBuilder {
 
     pub fn sphere(&mut self, radius: f32) -> &mut Self {
         self.push(SceneEntity::Sphere { render: 1, radius })
+    }
+
+    pub fn cylinder(&mut self, height: f32, radius: f32) -> &mut Self {
+        self.push(SceneEntity::Cylinder {
+            render: 1,
+            radius,
+            height,
+        })
     }
 }
 
