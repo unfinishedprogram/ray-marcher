@@ -92,10 +92,6 @@ struct Rotate {
     rotation:vec4<f32>,
 }
 
-struct ViewRay {
-    position: vec3<f32>,
-    distance: f32, // Distance along ray, 
-}
 
 struct Cylinder {
     item_type: u32,
@@ -107,27 +103,21 @@ struct Cylinder {
 fn as_sphere(item:SceneItem) -> Sphere {
     var sphere:Sphere;
     sphere.radius = bitcast<f32>(item.pad2);
-    sphere.item_type = SPHERE;
     return sphere;
 }
 
 fn as_translate(item:SceneItem) -> Translate {
     var translate:Translate;
-    translate.item_type = TRANSLATE;
     
     translate.pointer = item.pad2;
-    let x = bitcast<f32>(item.pad3);
-    let y = bitcast<f32>(item.pad4);
-    let z = bitcast<f32>(item.pad5);
 
-    translate.v = vec3<f32>(x, y, z);
-    
+
+    translate.v = bitcast<vec3<f32>>(vec3<u32>(item.pad3, item.pad4, item.pad5));
     return translate;
 }
 
 fn as_box(item:SceneItem) -> Box {
     var box:Box;
-    box.item_type = BOX;
 
     let x = bitcast<f32>(item.pad2);
     let y = bitcast<f32>(item.pad3);
@@ -139,8 +129,6 @@ fn as_box(item:SceneItem) -> Box {
 
 fn as_rotate(item:SceneItem) -> Rotate {
     var rotate:Rotate;
-    rotate.item_type = ROTATE;
-
     rotate.pointer = item.pad2;
     let x = bitcast<f32>(item.pad3);
     let y = bitcast<f32>(item.pad4);
@@ -153,13 +141,8 @@ fn as_rotate(item:SceneItem) -> Rotate {
 
 fn as_cylinder(item:SceneItem) -> Cylinder {
     var cylinder:Cylinder;
-    cylinder.item_type = CYLINDER;
-
-    let r = bitcast<f32>(item.pad2);
-    let h = bitcast<f32>(item.pad3);
-
-    cylinder.radius = r;
-    cylinder.height = h;
+    cylinder.radius = bitcast<f32>(item.pad2);
+    cylinder.height = bitcast<f32>(item.pad3);
 
     return cylinder;
 }
@@ -197,41 +180,42 @@ fn ambient_occlusion(point:vec3<f32>, normal:vec3<f32>) -> f32 {
 }
 
 fn direct_lighting(point:vec3<f32>, normal:vec3<f32>) -> vec3<f32> {
-    var light = vec3<f32>(0.0);
+    var color = vec3<f32>(0.0);
 
     for (var i = 0u; i < MAX_LIGHTS; i++) {
-        let l = lights.lights[i];
+        let light = lights.lights[i];
 
-        if l.enabled == 0u { return light; }
+        if light.enabled == 0u { return color; }
 
-        let delta = l.position - point;
+        let delta = light.position - point;
         let dir = normalize(delta);
 
-        let distance = length(delta);
         let angle = max(dot(dir, normal), 0.0);
+        let distance = length(delta);
 
         var power = (angle / distance);
 
         // Edge case optimization
         if power > 0.0 {
-            power *= trace_shadow(point, l);
+            power *= trace_shadow(point, light);
         }
         
-        light += l.color * power;
+        color += light.color * power;
     }
     
-    return light;
+    return color;
 }
 
 fn trace_shadow(point:vec3<f32>, light: Light) -> f32 {
     var res: f32 = 1.0;
+    let d = light.position - point;
 
-    let max_t = length(light.position - point);
-    let normal = normalize(light.position - point);
+    let max_t = length(d);
+    let normal = normalize(d);
     var t = 0.01;
 
-    for(var i = 0u; i < MAX_MARCH_STEPS; i++){
-
+    var i = 0u;
+    while(i < MAX_MARCH_STEPS) {
         let h = map(point + (normal * t));
 
         res = min(res, h / (light.radius * t));
@@ -240,6 +224,7 @@ fn trace_shadow(point:vec3<f32>, light: Light) -> f32 {
         if res < -1.0 || t > max_t {
             break;
         }
+        i++;
     }
 
     res = max(res, -1.0);
@@ -251,14 +236,10 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
     var signed_distance:f32 = MAX_SIGNED_DISTANCE;
     var point:vec3<f32> = point;
     push(scene.entities[index]);
-
-    // var iters = 0;
     // While items remain on the stack, evaluate them
     while STACK_PTR > 0u {
-        // iters += 1;
         let item = pop();
-        let item_type = item.item_type;
-        switch item_type {
+        switch item.item_type {
             case 1u: { // SPHERE
                 let sphere = as_sphere(item);
                 signed_distance = min(signed_distance, length(point) - sphere.radius);
@@ -294,11 +275,12 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
 
 fn map(point:vec3<f32>) -> f32 {
     var min_dist = MAX_SIGNED_DISTANCE;
-
-    for (var i = 0u; i < MAX_ENTITIES; i++) {
+    var i = 0u;
+    while(i < MAX_ENTITIES) {
         if scene.entities[i].render != 0u {
             min_dist = min(min_dist, evaluate_sdf(i, point));
         }
+        i += 1u;
     }
 
     return min_dist;
