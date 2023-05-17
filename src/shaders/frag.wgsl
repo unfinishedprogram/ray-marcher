@@ -1,8 +1,8 @@
-const STACK_SIZE = 8u;
+const STACK_SIZE = 16u;
 const MAX_ENTITIES = 8u;
 const MAX_LIGHTS = 8u;
 
-const MAX_SIGNED_DISTANCE = 10000.0;
+const MAX_SIGNED_DISTANCE = 1000.0;
 const MAX_MARCH_STEPS = 255u;
 
 const CLIP_NEAR:f32 = 0.001;
@@ -13,8 +13,6 @@ const AO_DISTANCE: f32 = 0.25;
 
 const THRESHOLD:f32 = 0.001;
 
-const MAX_RECUR_DEPTH = 8;
-
 // Constants defining the Enum Index of primitives
 const EMPTY = 0u;
 const SPHERE = 1u;
@@ -24,7 +22,7 @@ const ROTATE = 4u;
 const CYLINDER = 5u;
 
 var<private> STACK_PTR:u32 = 0u;
-var<private> STACK_ITEMS:array<u32, STACK_SIZE>; 
+var<private> STACK_ITEMS:array<vec2<u32>, STACK_SIZE>; 
 
 struct Camera {
     position: vec3<f32>,
@@ -110,8 +108,6 @@ fn as_translate(item:SceneItem) -> Translate {
     var translate:Translate;
     
     translate.pointer = item.pad2;
-
-
     translate.v = bitcast<vec3<f32>>(vec3<u32>(item.pad3, item.pad4, item.pad5));
     return translate;
 }
@@ -147,18 +143,22 @@ fn as_cylinder(item:SceneItem) -> Cylinder {
     return cylinder;
 }
 
-fn pop() -> u32 {
+fn pop() -> vec2<u32> {
     STACK_PTR -= 1u;
     return STACK_ITEMS[STACK_PTR];
 }
 
 fn push(index:u32) {
-    
-    STACK_ITEMS[STACK_PTR] = index;
+    STACK_ITEMS[STACK_PTR] = vec2<u32>(index, 0u);
     STACK_PTR += 1u;
 }
 
-fn applyRotation(v:vec3<f32>, rv:vec4<f32>) -> vec3<f32>{
+fn push_raw(index:u32) {
+    STACK_ITEMS[STACK_PTR] = vec2<u32>(index, 1u);
+    STACK_PTR += 1u;
+}
+
+fn apply_rotation(v:vec3<f32>, rv:vec4<f32>) -> vec3<f32>{
     let r = rv * vec4<f32>(-1.0, -1.0, -1.0, 1.0);
     let s = r.w;
     let u = r.xyz;
@@ -233,13 +233,16 @@ fn trace_shadow(point:vec3<f32>, light: Light) -> f32 {
     return 0.25 * (1.0 + res) * (1.0 + res) * (2.0 - res);
 }
 
-fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
+fn evaluate_sdf(o_point: vec3<f32>) -> f32 {
     var signed_distance:f32 = MAX_SIGNED_DISTANCE;
-    var point:vec3<f32> = point;
-    push(index);
+    var point:vec3<f32> = o_point;
     // While items remain on the stack, evaluate them
     while STACK_PTR > 0u {
-        let item = scene.entities[pop()];
+        let item_info = pop();
+        if (item_info.y == 1u) { 
+            point = o_point; 
+        }
+        let item = scene.entities[item_info.x];
         switch item.item_type {
             case 1u: { // SPHERE
                 let sphere = as_sphere(item);
@@ -258,7 +261,7 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
             }
             case 4u: { // ROTATE
                 var rotate = as_rotate(item);
-                point = applyRotation(point, rotate.rotation);
+                point = apply_rotation(point, rotate.rotation);
                 push(rotate.pointer);
             }
             case 5u: { // CYLINDER
@@ -276,15 +279,13 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
 
 fn map(point:vec3<f32>) -> f32 {
     var min_dist = MAX_SIGNED_DISTANCE;
-    var i = 0u;
-    while(i < MAX_ENTITIES) {
-        if scene.entities[i].render != 0u {
-            min_dist = min(min_dist, evaluate_sdf(i, point));
+    for (var i = 0u; i < MAX_ENTITIES; i++) {
+        if scene.entities[i].render == 1u {
+            push_raw(i);
         }
-        i += 1u;
     }
 
-    return min_dist;
+    return evaluate_sdf(point);
 }
 
 fn surface_normal(point:vec3<f32>) -> vec3<f32> {
@@ -305,7 +306,7 @@ var<uniform> dimensions: vec4<f32>;
 @group(0) @binding(1) 
 var<uniform> scene: Scene;
 
-@group(0) @binding(2)
+@group(0) @binding(2) 
 var<uniform> lights: Lights;
 
 @group(0) @binding(3) 
@@ -317,18 +318,17 @@ struct Input {
 
 @fragment
 fn main(in: Input) -> @location(0) vec4<f32> {
-    // 65
-    // 79
+    // 126
 
     // Get the aspect ratio of the render target
     let aspect_ratio = dimensions.x / dimensions.y;
-    // Normalize the pixel coordonates to -0.5 - 0.5;
-    let normalized = in.screen_cords / vec4<f32>(dimensions.x, dimensions.y, 1.0, 1.0) - vec4<f32>(0.5);
+    // Normalize the pixel coordonates to -0.5 -0.5;
+    let normalized = in.screen_cords / vec4<f32>(dimensions.xy, 1.0, 1.0) - vec4<f32>(0.5);
 
     let aspected = normalized * vec4<f32>(aspect_ratio, 1.0, 1.0, 1.0);
 
     let ray_dir = normalize(vec3(aspected.x, -aspected.y, 1.0));
-    let ray_direction = applyRotation(ray_dir, camera.orientation);
+    let ray_direction = apply_rotation(ray_dir, camera.orientation);
     let ray_origin = camera.position;
     var ray_length:f32 = camera.clip_near;
     var steps:u32 = 0u;
