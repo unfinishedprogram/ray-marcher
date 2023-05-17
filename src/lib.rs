@@ -31,12 +31,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
 use wgpu_context::WgpuContext;
 
-use crate::{
-    angle::Angle,
-    quaternion::get_rotation,
-    scene_buffer::{SceneBufferBuilder, SceneEntity},
-    vector3::Y,
-};
+use crate::{angle::Angle, quaternion::get_rotation, scene_buffer::SceneBufferBuilder, vector3::Y};
 
 fn get_canvas() -> HtmlCanvasElement {
     JsCast::dyn_into(
@@ -54,27 +49,23 @@ pub fn make_scene() -> (SceneBufferBuilder, LightBufferBuilder) {
         .r#box((10.0, 1.0, 10.0))
         .translate((0.0, -2.0, 0.0));
 
-    // scene_buffer
-    //     .r#box((1.0, 1.0, 1.0))
-    //     .translate((-2.0, 0.0, 0.0));
-
     scene_buffer.cylinder(1.0, 1.0);
 
-    // scene_buffer.sphere(1.0);
+    scene_buffer.sphere(1.0).translate((0.0, 2.0, 0.0));
 
     let mut light_buffer = LightBufferBuilder::new();
 
     light_buffer.add(Light {
         position: (2.0, 3.0, 2.0),
-        radius: 0.2,
-        color: (0.2, 0.2, 1.0),
+        radius: 0.05,
+        color: (0.1, 0.1, 0.5),
         enabled: 1,
     });
 
     light_buffer.add(Light {
         position: (-2.0, 3.0, 2.0),
-        radius: 0.2,
-        color: (1.0, 0.2, 0.2),
+        radius: 0.05,
+        color: (0.5, 0.1, 0.1),
         enabled: 1,
     });
 

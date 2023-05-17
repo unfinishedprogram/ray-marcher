@@ -208,7 +208,7 @@ fn direct_lighting(point:vec3<f32>, normal:vec3<f32>) -> vec3<f32> {
         let dir = normalize(delta);
 
         let distance = length(delta);
-        let angle = dot(dir, normal);
+        let angle = max(dot(dir, normal), 0.0);
 
         var power = (angle / distance);
 
@@ -249,7 +249,7 @@ fn trace_shadow(point:vec3<f32>, light: Light) -> f32 {
 
 fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
     var signed_distance:f32 = MAX_SIGNED_DISTANCE;
-    var transformed_point:vec3<f32> = point;
+    var point:vec3<f32> = point;
     push(scene.entities[index]);
 
     var iters = 0;
@@ -261,23 +261,23 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
 
         if item_type == TRANSLATE {
             var translate = as_translate(item);
-            transformed_point -= translate.v;
+            point -= translate.v;
             push(scene.entities[translate.pointer]);
         } else if item_type == ROTATE {
             var rotate = as_rotate(item);
-            transformed_point = applyRotation(transformed_point, rotate.rotation);
+            point = applyRotation(point, rotate.rotation);
             push(scene.entities[rotate.pointer]);
         } else if item_type == SPHERE {
             let sphere = as_sphere(item);
-            signed_distance = min(signed_distance, length(transformed_point) - sphere.radius);
+            signed_distance = min(signed_distance, length(point) - sphere.radius);
         } else if item_type == BOX {
             let box = as_box(item);
-            let q = abs(transformed_point) - box.dimensions;
+            let q = abs(point) - box.dimensions;
             let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
             signed_distance = min(signed_distance, distance);
         } else if item_type == CYLINDER {
             let cylinder = as_cylinder(item);
-            let d = abs(vec2<f32>(length(transformed_point.xz),transformed_point.y)) - vec2<f32>(cylinder.radius,cylinder.height);
+            let d = abs(vec2<f32>(length(point.xz),point.y)) - vec2<f32>(cylinder.radius,cylinder.height);
             let sd = min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
             signed_distance = min(signed_distance, sd);
         }
@@ -361,6 +361,9 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     if length(surface_point) < 100.0 {
         color = direct_lighting(surface_point, surface_normal);
     } 
+
+    color = sqrt(color);
+    
     
     // return vec4<f32>(surface_normal * 0.5 + vec3<f32>(0.5), 1.0);
     return vec4<f32>(color, 1.0);
