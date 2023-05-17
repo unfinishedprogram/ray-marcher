@@ -24,7 +24,7 @@ const ROTATE = 4u;
 const CYLINDER = 5u;
 
 var<private> STACK_PTR:u32 = 0u;
-var<private> STACK_ITEMS:array<SceneItem, STACK_SIZE>; 
+var<private> STACK_ITEMS:array<u32, STACK_SIZE>; 
 
 struct Camera {
     position: vec3<f32>,
@@ -147,13 +147,14 @@ fn as_cylinder(item:SceneItem) -> Cylinder {
     return cylinder;
 }
 
-fn pop() -> SceneItem {
+fn pop() -> u32 {
     STACK_PTR -= 1u;
     return STACK_ITEMS[STACK_PTR];
 }
 
-fn push(item:SceneItem) {
-    STACK_ITEMS[STACK_PTR] = item;
+fn push(index:u32) {
+    
+    STACK_ITEMS[STACK_PTR] = index;
     STACK_PTR += 1u;
 }
 
@@ -235,10 +236,10 @@ fn trace_shadow(point:vec3<f32>, light: Light) -> f32 {
 fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
     var signed_distance:f32 = MAX_SIGNED_DISTANCE;
     var point:vec3<f32> = point;
-    push(scene.entities[index]);
+    push(index);
     // While items remain on the stack, evaluate them
     while STACK_PTR > 0u {
-        let item = pop();
+        let item = scene.entities[pop()];
         switch item.item_type {
             case 1u: { // SPHERE
                 let sphere = as_sphere(item);
@@ -247,7 +248,7 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
             case 2u: { // TRANSLATE
                 var translate = as_translate(item);
                 point -= translate.v;
-                push(scene.entities[translate.pointer]);
+                push(translate.pointer);
             }
             case 3u: { // BOX
                 let box = as_box(item);
@@ -258,7 +259,7 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
             case 4u: { // ROTATE
                 var rotate = as_rotate(item);
                 point = applyRotation(point, rotate.rotation);
-                push(scene.entities[rotate.pointer]);
+                push(rotate.pointer);
             }
             case 5u: { // CYLINDER
                 let cylinder = as_cylinder(item);
