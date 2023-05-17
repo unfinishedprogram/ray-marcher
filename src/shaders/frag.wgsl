@@ -252,10 +252,10 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
     var point:vec3<f32> = point;
     push(scene.entities[index]);
 
-    var iters = 0;
+    // var iters = 0;
     // While items remain on the stack, evaluate them
-    while iters < MAX_RECUR_DEPTH && STACK_PTR > 0u {
-        iters += 1;
+    while STACK_PTR > 0u {
+        // iters += 1;
         let item = pop();
         let item_type = item.item_type;
         switch item_type {
@@ -334,6 +334,9 @@ struct Input {
 
 @fragment
 fn main(in: Input) -> @location(0) vec4<f32> {
+    // 65
+    // 79
+
     // Get the aspect ratio of the render target
     let aspect_ratio = dimensions.x / dimensions.y;
     // Normalize the pixel coordonates to -0.5 - 0.5;
