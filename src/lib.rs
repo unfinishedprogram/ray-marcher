@@ -4,16 +4,11 @@
 mod angle;
 mod camera;
 mod dimensions;
-mod entity;
 mod gpu;
 mod input;
-mod light;
 mod light_buffers;
 mod quaternion;
-mod render;
-mod scene;
 mod scene_buffer;
-mod signed_distance_field;
 mod util;
 mod vector3;
 mod wgpu_context;
