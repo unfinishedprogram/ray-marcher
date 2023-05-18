@@ -1,7 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 
 use crate::{
-    angle::Angle,
     gpu,
     quaternion::Quaternion,
     vector3::{Vec3, Vector3},

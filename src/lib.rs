@@ -93,7 +93,7 @@ pub async fn run() {
 
     let (scene, lights) = make_scene();
     let mut ctx = WgpuContext::new(
-        &canvas,
+        canvas,
         &[
             (&Dimensions::new(32, 32), 0),
             (&scene, 1),

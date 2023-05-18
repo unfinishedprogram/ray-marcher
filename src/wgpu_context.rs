@@ -30,7 +30,7 @@ fn load_shaders(device: &wgpu::Device) -> (ShaderModule, ShaderModule) {
 
 impl<'a> WgpuContext {
     pub async fn new(
-        canvas: &web_sys::HtmlCanvasElement,
+        canvas: web_sys::HtmlCanvasElement,
         resources: &'a [(&dyn Resource<'a>, u32)],
     ) -> Self {
         log::info!("Creating Wgpu Context");
