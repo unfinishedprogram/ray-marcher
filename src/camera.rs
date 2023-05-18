@@ -1,10 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 
-use crate::{
-    gpu,
-    quaternion::Quaternion,
-    vector3::{Vec3, Vector3},
-};
+use crate::{gpu, quaternion::Quaternion, vector3::Vec3};
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Default)]
@@ -34,15 +30,6 @@ impl Camera {
             clip_near,
             clip_far,
         }
-    }
-
-    pub fn get_ray_direction(&self, x: f32, y: f32) -> Vec3 {
-        let y = -y + 0.5;
-        let x = x - 0.5;
-
-        (x, y, self.clip_near)
-            .normalize()
-            .apply_rotation(self.orientation)
     }
 }
 

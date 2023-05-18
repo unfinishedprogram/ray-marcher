@@ -1,14 +1,11 @@
 use crate::{
     angle::Angle,
-    quaternion::{self, Quat, Quaternion},
-    util::interpolation::soft_clamp,
+    quaternion::{self, Quaternion},
 };
 
 pub type Vec3 = (f32, f32, f32);
 
-pub const X: Vec3 = (1.0, 0.0, 0.0);
 pub const Y: Vec3 = (0.0, 1.0, 0.0);
-pub const Z: Vec3 = (0.0, 0.0, 1.0);
 
 pub trait Vector3 {
     const ZERO: Vec3 = (0.0, 0.0, 0.0);
@@ -26,7 +23,6 @@ pub trait Vector3 {
     fn multiply_scalar(self, scalar: f32) -> Vec3;
     fn normalize(self) -> Vec3;
     fn rotate_xyz(self, other: Vec3) -> Vec3;
-    fn rgb_u8(self) -> (u8, u8, u8);
     fn sub(self, rhs: Vec3) -> Vec3;
     fn add(self, rhs: Self) -> Vec3;
     fn channel_multiply(self, rhs: Vec3) -> Vec3;
@@ -103,15 +99,6 @@ impl Vector3 for Vec3 {
         self.rotate((1.0, 0.0, 0.0), Angle::from_radians(x))
             .rotate((0.0, 1.0, 0.0), Angle::from_radians(y))
             .rotate((0.0, 0.0, 1.0), Angle::from_radians(z))
-    }
-
-    fn rgb_u8(self) -> (u8, u8, u8) {
-        let (x, y, z) = self;
-        (
-            soft_clamp(x * 255.0, 0.0, 255.0) as u8,
-            soft_clamp(y * 255.0, 0.0, 255.0) as u8,
-            soft_clamp(z * 255.0, 0.0, 255.0) as u8,
-        )
     }
 
     fn sub(self, rhs: Vec3) -> Vec3 {

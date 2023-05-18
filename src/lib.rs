@@ -9,7 +9,6 @@ mod input;
 mod light_buffers;
 mod quaternion;
 mod scene_buffer;
-mod util;
 mod vector3;
 mod wgpu_context;
 
