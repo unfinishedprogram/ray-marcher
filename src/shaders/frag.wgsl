@@ -20,9 +20,11 @@ const TRANSLATE = 2u;
 const BOX = 3u;
 const ROTATE = 4u;
 const CYLINDER = 5u;
+const SUBTRACT = 6u;
 
 var<private> STACK_PTR:u32 = 0u;
 var<private> STACK_ITEMS:array<vec2<u32>, STACK_SIZE>; 
+var<private> ITEM_DISTANCE:array<f32, MAX_ENTITIES>;
 
 struct Camera {
     position: vec3<f32>,
@@ -98,6 +100,13 @@ struct Cylinder {
     height:f32,
 }
 
+struct Subtract {
+    item_type: u32,
+    render: u32, 
+    pointer_a: u32, 
+    pointer_b: u32, 
+}
+
 fn as_sphere(item:SceneItem) -> Sphere {
     var sphere:Sphere;
     sphere.radius = bitcast<f32>(item.pad2);
@@ -141,6 +150,13 @@ fn as_cylinder(item:SceneItem) -> Cylinder {
     cylinder.height = bitcast<f32>(item.pad3);
 
     return cylinder;
+}
+
+fn as_subtract(item:SceneItem) -> Subtract {
+    var subtract:Subtract;
+    subtract.pointer_a = item.pad2;
+    subtract.pointer_b = item.pad3;
+    return subtract;
 }
 
 fn pop() -> vec2<u32> {
@@ -239,9 +255,8 @@ fn evaluate_sdf(o_point: vec3<f32>) -> f32 {
     // While items remain on the stack, evaluate them
     while STACK_PTR > 0u {
         let item_info = pop();
-        if (item_info.y == 1u) { 
-            point = o_point; 
-        }
+        // Reset position
+        if (item_info.y == 1u) { point = o_point; }
         let item = scene.entities[item_info.x];
         switch item.item_type {
             case 1u: { // SPHERE
@@ -269,6 +284,9 @@ fn evaluate_sdf(o_point: vec3<f32>) -> f32 {
                 let d = abs(vec2<f32>(length(point.xz),point.y)) - vec2<f32>(cylinder.radius,cylinder.height);
                 let sd = min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
                 signed_distance = min(signed_distance, sd);
+            }
+            case 6u: { // SUBTRACT 
+                let subtract = as_subtract(item);
             }
             default: {}
         }

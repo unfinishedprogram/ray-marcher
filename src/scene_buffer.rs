@@ -36,6 +36,12 @@ pub enum SceneEntity {
         radius: f32,
         height: f32,
     },
+
+    Subtract {
+        render: u32,
+        pointer_a: u32,
+        pointer_b: u32,
+    },
 }
 
 impl SceneEntity {
@@ -46,6 +52,7 @@ impl SceneEntity {
             | SceneEntity::Translate { render, .. }
             | SceneEntity::Box { render, .. }
             | SceneEntity::Cylinder { render, .. }
+            | SceneEntity::Subtract { render, .. }
             | SceneEntity::Rotate { render, .. } => *render = 0,
         }
     }
@@ -56,7 +63,7 @@ unsafe impl Zeroable for SceneEntity {}
 
 pub struct SceneBufferBuilder {
     entities: [SceneEntity; MAX_ENTITIES],
-    entities_length: usize,
+    pub entities_length: usize,
 }
 
 impl SceneBufferBuilder {
@@ -101,6 +108,17 @@ impl SceneBufferBuilder {
             render: 1,
             radius,
             height,
+        })
+    }
+
+    pub fn subtract(&mut self, pointer_a: u32, pointer_b: u32) -> &mut Self {
+        self.entities[pointer_a as usize].hide();
+        self.entities[pointer_b as usize].hide();
+
+        self.push(SceneEntity::Subtract {
+            render: 1,
+            pointer_a,
+            pointer_b,
         })
     }
 }
