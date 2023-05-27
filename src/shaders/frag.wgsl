@@ -1,5 +1,5 @@
-const STACK_SIZE = 16u;
-const MAX_ENTITIES = 8u;
+const STACK_SIZE = 8u;
+const MAX_ENTITIES = 4u;
 const MAX_LIGHTS = 8u;
 
 const MAX_SIGNED_DISTANCE = 1000.0;
@@ -16,15 +16,18 @@ const THRESHOLD:f32 = 0.001;
 // Constants defining the Enum Index of primitives
 const EMPTY = 0u;
 const SPHERE = 1u;
-const TRANSLATE = 2u;
-const BOX = 3u;
-const ROTATE = 4u;
-const CYLINDER = 5u;
-const SUBTRACT = 6u;
+const BOX = 2u;
+const CYLINDER = 3u;
 
 var<private> STACK_PTR:u32 = 0u;
 var<private> STACK_ITEMS:array<vec2<u32>, STACK_SIZE>; 
 var<private> ITEM_DISTANCE:array<f32, MAX_ENTITIES>;
+
+struct Transform {
+    translation: vec3<f32>,
+    rotation: vec3<f32>,
+    scale: vec3<f32>,
+}
 
 struct Camera {
     position: vec3<f32>,
@@ -39,13 +42,8 @@ struct Camera {
 // if it's value is 0 it is not rendered directly
 struct SceneItem {
     item_type: u32,
-    render: u32,
-    pad2: u32,
-    pad3: u32,
-    pad4: u32,
-    pad5: u32,
-    pad6: u32,
-    pad7: u32,
+    transform: Transform,
+    padding: vec3<f32>,
 }
 
 struct Scene {
@@ -66,97 +64,41 @@ struct Lights {
 // "Inherits" SceneItem
 struct Sphere {
     item_type: u32,
-    render: u32, 
+    transform: Transform,
     radius: f32,
-}
-
-// "Inherits" SceneItem
-struct Translate {
-    item_type: u32,
-    render: u32, 
-    pointer: u32, 
-    v: vec3<f32>,
 }
 
 // "Inherits" SceneItem
 struct Box {
     item_type: u32,
-    render: u32, 
+    transform: Transform,
     dimensions:vec3<f32>,
 }
 
-struct Rotate {
-    item_type: u32,
-    render: u32, 
-    pointer: u32, 
-    rotation:vec4<f32>,
-}
-
-
 struct Cylinder {
     item_type: u32,
-    render: u32, 
-    radius:f32,
-    height:f32,
-}
-
-struct Subtract {
-    item_type: u32,
-    render: u32, 
-    pointer_a: u32, 
-    pointer_b: u32, 
+    transform: Transform,
+    radius: f32,
+    height: f32,
 }
 
 fn as_sphere(item:SceneItem) -> Sphere {
     var sphere:Sphere;
-    sphere.radius = bitcast<f32>(item.pad2);
+    sphere.radius = item.padding.x;
     return sphere;
-}
-
-fn as_translate(item:SceneItem) -> Translate {
-    var translate:Translate;
-    
-    translate.pointer = item.pad2;
-    translate.v = bitcast<vec3<f32>>(vec3<u32>(item.pad3, item.pad4, item.pad5));
-    return translate;
 }
 
 fn as_box(item:SceneItem) -> Box {
     var box:Box;
-
-    let x = bitcast<f32>(item.pad2);
-    let y = bitcast<f32>(item.pad3);
-    let z = bitcast<f32>(item.pad4);
-
-    box.dimensions = vec3<f32>(x, y, z);
+    box.dimensions = item.padding;
     return box;
-}
-
-fn as_rotate(item:SceneItem) -> Rotate {
-    var rotate:Rotate;
-    rotate.pointer = item.pad2;
-    let x = bitcast<f32>(item.pad3);
-    let y = bitcast<f32>(item.pad4);
-    let z = bitcast<f32>(item.pad5);
-    let w = bitcast<f32>(item.pad6);
-
-    rotate.rotation = vec4<f32>(x, y, z, w);
-    return rotate;
 }
 
 fn as_cylinder(item:SceneItem) -> Cylinder {
     var cylinder:Cylinder;
-    cylinder.radius = bitcast<f32>(item.pad2);
-    cylinder.height = bitcast<f32>(item.pad3);
-
+    cylinder.radius = item.padding.x;
+    cylinder.height = item.padding.y;
     return cylinder;
-}
-
-fn as_subtract(item:SceneItem) -> Subtract {
-    var subtract:Subtract;
-    subtract.pointer_a = item.pad2;
-    subtract.pointer_b = item.pad3;
-    return subtract;
 }
 
 fn pop() -> vec2<u32> {
@@ -182,6 +124,10 @@ fn apply_rotation(v:vec3<f32>, rv:vec4<f32>) -> vec3<f32>{
     let b = v * ((s * s) - dot(u, u));
     let c = cross(u, v) * (2.0 * s);
     return a + b + c;
+}
+
+fn apply_transform(point:vec3<f32>, transform:Transform) -> vec3<f32> {
+    return point + transform.translation;
 }
 
 fn ambient_occlusion(point:vec3<f32>, normal:vec3<f32>) -> f32 {
@@ -249,47 +195,35 @@ fn trace_shadow(point:vec3<f32>, light: Light) -> f32 {
     return 0.25 * (1.0 + res) * (1.0 + res) * (2.0 - res);
 }
 
-fn evaluate_sdf(o_point: vec3<f32>) -> f32 {
+fn evaluate_sdf(item_index:u32, o_point: vec3<f32>) -> f32 {
     var signed_distance:f32 = MAX_SIGNED_DISTANCE;
-    var point:vec3<f32> = o_point;
-    // While items remain on the stack, evaluate them
-    while STACK_PTR > 0u {
-        let item_info = pop();
-        // Reset position
-        if (item_info.y == 1u) { point = o_point; }
-        let item = scene.entities[item_info.x];
-        switch item.item_type {
-            case 1u: { // SPHERE
-                let sphere = as_sphere(item);
-                signed_distance = min(signed_distance, length(point) - sphere.radius);
-            }
-            case 2u: { // TRANSLATE
-                var translate = as_translate(item);
-                point -= translate.v;
-                push(translate.pointer);
-            }
-            case 3u: { // BOX
-                let box = as_box(item);
-                let q = abs(point) - box.dimensions;
-                let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
-                signed_distance = min(signed_distance, distance);
-            }
-            case 4u: { // ROTATE
-                var rotate = as_rotate(item);
-                point = apply_rotation(point, rotate.rotation);
-                push(rotate.pointer);
-            }
-            case 5u: { // CYLINDER
-                let cylinder = as_cylinder(item);
-                let d = abs(vec2<f32>(length(point.xz),point.y)) - vec2<f32>(cylinder.radius,cylinder.height);
-                let sd = min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
-                signed_distance = min(signed_distance, sd);
-            }
-            case 6u: { // SUBTRACT 
-                let subtract = as_subtract(item);
-            }
-            default: {}
+
+    let item = scene.entities[item_index];
+
+    if item.item_type == 0u {
+        return signed_distance;
+    }
+
+    let point = o_point - item.transform.translation;
+
+    switch item.item_type {
+        case 1u: { // SPHERE
+            let sphere = as_sphere(item);
+            signed_distance = min(signed_distance, length(point) - sphere.radius);
         }
+        case 2u: { // BOX
+            let box = as_box(item);
+            let q = abs(point) - box.dimensions;
+            let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
+            signed_distance = min(signed_distance, distance);
+        }
+        case 3u: { // CYLINDER
+            let cylinder = as_cylinder(item);
+            let d = abs(vec2<f32>(length(point.xz),point.y)) - vec2<f32>(cylinder.radius,cylinder.height);
+            let sd = min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
+            signed_distance = min(signed_distance, sd);
+        }
+        default: { return signed_distance; }
     }
 
     return signed_distance;
@@ -298,12 +232,10 @@ fn evaluate_sdf(o_point: vec3<f32>) -> f32 {
 fn map(point:vec3<f32>) -> f32 {
     var min_dist = MAX_SIGNED_DISTANCE;
     for (var i = 0u; i < MAX_ENTITIES; i++) {
-        if scene.entities[i].render == 1u {
-            push_raw(i);
-        }
+        min_dist = min(min_dist, evaluate_sdf(i, point));
     }
 
-    return evaluate_sdf(point);
+    return min_dist;
 }
 
 fn surface_normal(point:vec3<f32>) -> vec3<f32> {
@@ -336,8 +268,6 @@ struct Input {
 
 @fragment
 fn main(in: Input) -> @location(0) vec4<f32> {
-    // 126
-
     // Get the aspect ratio of the render target
     let aspect_ratio = dimensions.x / dimensions.y;
     // Normalize the pixel coordonates to -0.5 -0.5;

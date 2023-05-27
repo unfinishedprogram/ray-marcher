@@ -9,7 +9,7 @@ mod input;
 mod light_buffers;
 mod quaternion;
 mod scene_buffer;
-mod scene_entity;
+mod transform;
 mod vector3;
 mod wgpu_context;
 
@@ -21,7 +21,7 @@ use gloo::utils::window;
 use input::Input;
 use light_buffers::{Light, LightBufferBuilder};
 use quaternion::multiply;
-use scene_entity::{SceneBuilder, SceneEntity};
+use scene_buffer::SceneEntity;
 use vector3::Vector3;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
@@ -41,23 +41,12 @@ fn get_canvas() -> HtmlCanvasElement {
 pub fn make_scene() -> (SceneBufferBuilder, LightBufferBuilder) {
     // let mut scene_buffer = SceneBufferBuilder::new();
 
-    let mut scene = SceneBuilder::default();
-    scene.add(
-        SceneEntity::Box {
-            dimensions: (10.0, 1.0, 10.0),
-        }
-        .translate((0.0, -2.0, 0.0)),
-    );
+    let mut scene = SceneBufferBuilder::default();
 
-    scene.add(
-        SceneEntity::Cylinder {
-            radius: 1.0,
-            height: 1.0,
-        }
-        .subtract(SceneEntity::Sphere { radius: 1.0 }.translate((0.0, 1.0, 0.0))),
-    );
-
-    let scene_buffer = scene.build();
+    scene
+        .push(SceneEntity::r#box((10.0, 1.0, 10.0)).translate((0.0, -2.0, 0.0)))
+        .push(SceneEntity::cylinder(1.0, 1.0))
+        .push(SceneEntity::sphere(1.0).translate((0.0, 2.0, 0.0)));
 
     let mut light_buffer = LightBufferBuilder::new();
 
@@ -75,7 +64,7 @@ pub fn make_scene() -> (SceneBufferBuilder, LightBufferBuilder) {
         enabled: 1,
     });
 
-    (scene_buffer, light_buffer)
+    (scene, light_buffer)
 }
 
 fn request_animation_frame(f: &Closure<dyn FnMut()>) {

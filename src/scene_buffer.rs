@@ -1,7 +1,11 @@
 use bytemuck::{Pod, Zeroable};
 const MAX_ENTITIES: usize = 8;
 
-use crate::{gpu, quaternion::Quaternion, vector3::Vec3};
+use crate::{
+    gpu,
+    transform::Transform,
+    vector3::{Vec3, Vector3},
+};
 
 type Ptr = u32;
 
@@ -9,52 +13,57 @@ type Ptr = u32;
 #[derive(Clone, Copy)]
 pub enum SceneEntity {
     Empty,
-    Sphere {
-        render: u32,
-        radius: f32,
-    },
 
-    Translate {
-        render: u32,
-        pointer: Ptr,
-        v: Vec3,
+    Sphere {
+        transform: Transform,
+        radius: f32,
     },
 
     Box {
-        render: u32,
+        transform: Transform,
         dimensions: Vec3,
     },
 
-    Rotate {
-        render: u32,
-        pointer: Ptr,
-        q: Quaternion,
-    },
-
     Cylinder {
-        render: u32,
+        transform: Transform,
         radius: f32,
         height: f32,
-    },
-
-    Subtract {
-        render: u32,
-        pointer_a: u32,
-        pointer_b: u32,
     },
 }
 
 impl SceneEntity {
-    pub fn hide(&mut self) {
-        match self {
-            SceneEntity::Empty => {}
-            SceneEntity::Sphere { render, .. }
-            | SceneEntity::Translate { render, .. }
-            | SceneEntity::Box { render, .. }
-            | SceneEntity::Cylinder { render, .. }
-            | SceneEntity::Subtract { render, .. }
-            | SceneEntity::Rotate { render, .. } => *render = 0,
+    pub fn sphere(radius: f32) -> Self {
+        SceneEntity::Sphere {
+            transform: Default::default(),
+            radius,
         }
+    }
+
+    pub fn r#box(dimensions: Vec3) -> Self {
+        SceneEntity::Box {
+            transform: Default::default(),
+            dimensions,
+        }
+    }
+
+    pub fn cylinder(radius: f32, height: f32) -> Self {
+        SceneEntity::Cylinder {
+            transform: Default::default(),
+            radius,
+            height,
+        }
+    }
+
+    pub fn translate(mut self, translation: Vec3) -> Self {
+        match &mut self {
+            SceneEntity::Empty => {}
+            SceneEntity::Sphere { transform, .. }
+            | SceneEntity::Box { transform, .. }
+            | SceneEntity::Cylinder { transform, .. } => {
+                transform.translation.add_assign(translation);
+            }
+        };
+        self
     }
 }
 
@@ -73,53 +82,11 @@ impl SceneBufferBuilder {
             entities_length: 0,
         }
     }
-
     pub fn push(&mut self, entity: SceneEntity) -> &mut Self {
         let index = self.entities_length;
         self.entities[index] = entity;
         self.entities_length += 1;
         self
-    }
-
-    pub fn translate(&mut self, v: Vec3) -> &mut Self {
-        let index = self.entities_length - 1;
-        self.entities[index].hide();
-
-        self.push(SceneEntity::Translate {
-            render: 1,
-            pointer: index as u32,
-            v,
-        })
-    }
-
-    pub fn r#box(&mut self, dimensions: Vec3) -> &mut Self {
-        self.push(SceneEntity::Box {
-            render: 1,
-            dimensions,
-        })
-    }
-
-    pub fn sphere(&mut self, radius: f32) -> &mut Self {
-        self.push(SceneEntity::Sphere { render: 1, radius })
-    }
-
-    pub fn cylinder(&mut self, height: f32, radius: f32) -> &mut Self {
-        self.push(SceneEntity::Cylinder {
-            render: 1,
-            radius,
-            height,
-        })
-    }
-
-    pub fn subtract(&mut self, pointer_a: u32, pointer_b: u32) -> &mut Self {
-        self.entities[pointer_a as usize].hide();
-        self.entities[pointer_b as usize].hide();
-
-        self.push(SceneEntity::Subtract {
-            render: 1,
-            pointer_a,
-            pointer_b,
-        })
     }
 }
 
