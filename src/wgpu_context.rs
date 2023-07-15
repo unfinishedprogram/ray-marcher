@@ -1,4 +1,4 @@
-use wgpu::{InstanceDescriptor, RenderPipeline, ShaderModule};
+use wgpu::{Maintain, RenderPipeline, ShaderModule};
 
 use crate::{
     camera::Camera,
@@ -37,35 +37,29 @@ impl<'a> WgpuContext {
         let (width, height) = (canvas.width(), canvas.height());
         log::info!("Canvas size: {width}x{height}");
 
-        let instance = wgpu::Instance::new(InstanceDescriptor::default());
+        let instance = wgpu::Instance::default();
         let surface = instance.create_surface_from_canvas(canvas).unwrap();
 
         // Request adapter with high perf power preference
         let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            })
+            .request_adapter(&wgpu::RequestAdapterOptions::default())
             .await
             .expect("Failed to get requested adapter");
 
         log::info!("{:?}", adapter.get_downlevel_capabilities());
-
         log::info!("Backend: {:?}", adapter.get_info().backend);
 
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
-                    // Since wgpu isn't well supported yet, we default to webgl2 as a fallback
-                    limits: wgpu::Limits::downlevel_webgl2_defaults(),
                     label: None,
+                    features: wgpu::Features::empty(),
+                    limits: wgpu::Limits::default(),
                 },
                 None,
             )
             .await
-            .expect("Failed to request device");
+            .unwrap();
 
         let resource_group: ResourceGroup = ResourceGroup::new(&device, resources);
 
@@ -138,14 +132,13 @@ impl<'a> WgpuContext {
 
     pub fn render(
         &mut self,
-        scene: (SceneBufferBuilder, LightBufferBuilder),
+        objects: &SceneBufferBuilder,
+        lights: &LightBufferBuilder,
         camera: &Camera,
     ) -> Result<(), wgpu::SurfaceError> {
-        let (scene, lights) = scene;
-
         let bind_group = self.resource_group.bind_group_entries(
             &self.device,
-            &[(&self.dims, 0), (&scene, 1), (&lights, 2), (camera, 3)],
+            &[(&self.dims, 0), (objects, 1), (lights, 2), (camera, 3)],
         );
 
         let output_texture = self.surface.get_current_texture()?;
@@ -173,14 +166,16 @@ impl<'a> WgpuContext {
                 })],
                 depth_stencil_attachment: None,
             });
+
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &bind_group, &[]);
 
             render_pass.draw(0..3, 0..1);
         }
 
-        self.queue.submit(std::iter::once(encoder.finish()));
+        let submission = self.queue.submit(std::iter::once(encoder.finish()));
         output_texture.present();
+
         Ok(())
     }
 }

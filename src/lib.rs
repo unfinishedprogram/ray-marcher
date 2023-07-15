@@ -14,7 +14,7 @@ mod transform;
 mod vector3;
 mod wgpu_context;
 
-use std::{cell::RefCell, fmt::format, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use camera::Camera;
 use dimensions::Dimensions;
@@ -116,6 +116,8 @@ pub async fn run() {
     )
     .await;
 
+    let (objects, lights) = make_scene();
+
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         let mouse = input.mouse_movement();
 
@@ -143,7 +145,7 @@ pub async fn run() {
                 .multiply_scalar(delta_time * 0.1),
         );
 
-        ctx.render(make_scene(), &camera).unwrap();
+        ctx.render(&objects, &lights, &camera).unwrap();
 
         // Schedule ourself for another requestAnimationFrame callback.
         request_animation_frame(f.borrow().as_ref().unwrap());

@@ -1,2 +1,5 @@
 [serve]
 no_autoreload = true
+
+[build]
+release = false

@@ -101,21 +101,6 @@ fn as_cylinder(item:SceneItem) -> Cylinder {
     return cylinder;
 }
 
-fn pop() -> vec2<u32> {
-    STACK_PTR -= 1u;
-    return STACK_ITEMS[STACK_PTR];
-}
-
-fn push(index:u32) {
-    STACK_ITEMS[STACK_PTR] = vec2<u32>(index, 0u);
-    STACK_PTR += 1u;
-}
-
-fn push_raw(index:u32) {
-    STACK_ITEMS[STACK_PTR] = vec2<u32>(index, 1u);
-    STACK_PTR += 1u;
-}
-
 fn apply_rotation(v:vec3<f32>, rv:vec4<f32>) -> vec3<f32>{
     let r = rv * vec4<f32>(-1.0, -1.0, -1.0, 1.0);
     let s = r.w;
@@ -144,6 +129,7 @@ fn ambient_occlusion(point:vec3<f32>, normal:vec3<f32>) -> f32 {
 
 fn direct_lighting(point:vec3<f32>, normal:vec3<f32>) -> vec3<f32> {
     var color = vec3<f32>(0.0);
+    if(length(point) > CLIP_FAR) { return color; }
 
     for (var i = 0u; i < MAX_LIGHTS; i++) {
         let light = lights.lights[i];
@@ -195,35 +181,28 @@ fn trace_shadow(point:vec3<f32>, light: Light) -> f32 {
     return 0.25 * (1.0 + res) * (1.0 + res) * (2.0 - res);
 }
 
-fn evaluate_sdf(item_index:u32, o_point: vec3<f32>) -> f32 {
+fn evaluate_sdf(item:SceneItem, o_point: vec3<f32>) -> f32 {
     var signed_distance:f32 = MAX_SIGNED_DISTANCE;
-
-    let item = scene.entities[item_index];
-
-    if item.item_type == 0u {
-        return signed_distance;
-    }
 
     let point = o_point - item.transform.translation;
 
     switch item.item_type {
+        case 0u: { return signed_distance; }
         case 1u: { // SPHERE
             let sphere = as_sphere(item);
-            signed_distance = min(signed_distance, length(point) - sphere.radius);
+            return length(point) - sphere.radius;
         }
         case 2u: { // BOX
             let box = as_box(item);
             let q = abs(point) - box.dimensions;
-            let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
-            signed_distance = min(signed_distance, distance);
+            return length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
         }
         case 3u: { // CYLINDER
             let cylinder = as_cylinder(item);
             let d = abs(vec2<f32>(length(point.xz),point.y)) - vec2<f32>(cylinder.radius,cylinder.height);
-            let sd = min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
-            signed_distance = min(signed_distance, sd);
+            return min(max(d.x, d.y), 0.0) + length(max(d, vec2<f32>(0.0)));
         }
-        default: { return signed_distance; }
+        default:{return signed_distance;}
     }
 
     return signed_distance;
@@ -231,14 +210,15 @@ fn evaluate_sdf(item_index:u32, o_point: vec3<f32>) -> f32 {
 
 fn map(point:vec3<f32>) -> f32 {
     var min_dist = MAX_SIGNED_DISTANCE;
+
     for (var i = 0u; i < MAX_ENTITIES; i++) {
-        min_dist = min(min_dist, evaluate_sdf(i, point));
+        min_dist = min(min_dist, evaluate_sdf(scene.entities[i], point));
     }
 
     return min_dist;
 }
 
-fn surface_normal(point:vec3<f32>) -> vec3<f32> {
+fn calculate_surface_normal(point:vec3<f32>) -> vec3<f32> {
     let step_x = vec3<f32>(0.0001, 0.0, 0.0);
     let step_y = vec3<f32>(0.0, 0.0001, 0.0);
     let step_z = vec3<f32>(0.0, 0.0, 0.0001);
@@ -282,26 +262,20 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     var steps:u32 = 0u;
 
     loop {
+        steps++;
+        if steps > MAX_MARCH_STEPS { break; }
         let point = ray_origin + (ray_direction * ray_length);
         let min_signed_distance = map(point);
-        if ray_length > CLIP_FAR { break; }
         if min_signed_distance < THRESHOLD { break; }
         ray_length += min_signed_distance;
-        steps++;
-        if steps > MAX_MARCH_STEPS {break;}
+        if ray_length > CLIP_FAR { break; }
     }
     
     let surface_point = ray_origin + ray_direction * ray_length;
-    let surface_normal = surface_normal(surface_point);
-
-    // let occlusion = ambient_occlusion(surface_point, surface_normal);
+    var surface_normal = calculate_surface_normal(surface_point);
 
     var color = vec3<f32>(0.0);
-
-    if length(surface_point) < 100.0 {
-        color = direct_lighting(surface_point, surface_normal);
-    } 
-
+    color = direct_lighting(surface_point, surface_normal) * f32(length(surface_point) < 100.0);
     color = sqrt(color);
     
     
