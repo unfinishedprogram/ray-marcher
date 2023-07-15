@@ -19,6 +19,7 @@ web-sys = { version = "0.3.61", features = [
     'HtmlCanvasElement',
     'MouseEvent',
     'KeyboardEvent',
+    'Performance',
 ] }
 
 bytemuck = { version = "1.13.1", features = ["derive"] }

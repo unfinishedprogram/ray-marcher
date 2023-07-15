@@ -38,6 +38,14 @@ fn get_canvas() -> HtmlCanvasElement {
     .expect("Not a valid canvas element")
 }
 
+fn performance_now() -> f64 {
+    web_sys::window()
+        .expect("window not found in context")
+        .performance()
+        .expect("performance not found on window")
+        .now()
+}
+
 pub fn make_scene() -> (SceneBufferBuilder, LightBufferBuilder) {
     // let mut scene_buffer = SceneBufferBuilder::new();
 
@@ -81,6 +89,8 @@ pub async fn run() {
     let mut yaw = 0.0;
     let mut pitch = 0.0;
 
+    let mut last_perf_time = performance_now();
+
     let mut input = Input::new(&get_canvas());
 
     let f = Rc::new(RefCell::new(None));
@@ -101,10 +111,14 @@ pub async fn run() {
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         let mouse = input.mouse_movement();
 
-        yaw -= mouse.0;
-        pitch -= mouse.1;
+        let now = performance_now();
+        let delta_time = (now - last_perf_time) as f32;
+        last_perf_time = now;
 
-        pitch = pitch.clamp(-90.0, 90.0);
+        yaw -= mouse.0 * delta_time * 0.1;
+        pitch -= mouse.1 * delta_time * 0.1;
+
+        pitch = pitch.clamp(-75.0, 75.0);
         yaw %= 360.0;
 
         let yaw_quat = get_rotation(Angle::from_degrees(yaw), Y);
@@ -115,7 +129,8 @@ pub async fn run() {
         camera.position.add_assign(
             input
                 .keyboard_movement()
-                .apply_rotation(get_rotation(Angle::from_degrees(yaw), Y)),
+                .apply_rotation(get_rotation(Angle::from_degrees(yaw), Y))
+                .multiply_scalar(delta_time * 0.1),
         );
 
         ctx.render(make_scene(), &camera).unwrap();
