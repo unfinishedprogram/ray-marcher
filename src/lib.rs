@@ -9,19 +9,21 @@ mod input;
 mod light_buffers;
 mod quaternion;
 mod scene_buffer;
+pub mod stats;
 mod transform;
 mod vector3;
 mod wgpu_context;
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, fmt::format, rc::Rc};
 
 use camera::Camera;
 use dimensions::Dimensions;
-use gloo::utils::window;
+use gloo::utils::{document, window};
 use input::Input;
 use light_buffers::{Light, LightBufferBuilder};
 use quaternion::multiply;
 use scene_buffer::SceneEntity;
+use stats::StatTracker;
 use vector3::Vector3;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
@@ -84,7 +86,13 @@ fn request_animation_frame(f: &Closure<dyn FnMut()>) {
 pub async fn run() {
     let mut camera = Camera::new(0.5, (0.0, 0.0, -10.0), (0.0, 0.0, 0.0, 1.0), 0.001, 1000.0);
 
+    let mut stat_tracker = StatTracker::new(document().get_element_by_id("stats").unwrap());
+
     let canvas = get_canvas();
+
+    let stat_frame_time = stat_tracker.new_stat("FrameTime");
+    let stat_res = stat_tracker.new_stat("Resolution");
+    stat_tracker.update(&stat_res, format!("{}x{}", canvas.width(), canvas.height()));
 
     let mut yaw = 0.0;
     let mut pitch = 0.0;
@@ -114,6 +122,8 @@ pub async fn run() {
         let now = performance_now();
         let delta_time = (now - last_perf_time) as f32;
         last_perf_time = now;
+
+        stat_tracker.update(&stat_frame_time, format!("{:.2}", delta_time));
 
         yaw -= mouse.0 * delta_time * 0.1;
         pitch -= mouse.1 * delta_time * 0.1;
