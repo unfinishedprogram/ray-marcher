@@ -7,8 +7,6 @@ use crate::{
     vector3::{Vec3, Vector3},
 };
 
-type Ptr = u32;
-
 #[repr(C, align(16))]
 #[derive(Clone, Copy)]
 pub enum SceneEntity {
