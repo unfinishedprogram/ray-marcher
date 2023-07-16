@@ -39,8 +39,7 @@ impl<'a> WgpuContext {
         let scene_resource_group: ResourceGroup = ResourceGroup::new(&instance.device, resources);
 
         let vertex_module = instance.load_shader_module(wgpu::include_wgsl!("shaders/vert.wgsl"));
-        let fragment_module =
-            instance.load_shader_module(wgpu::include_wgsl!("shaders/draw_texture.wgsl"));
+        let fragment_module = instance.load_shader_module(wgpu::include_wgsl!("shaders/frag.wgsl"));
         let compute_module =
             instance.load_shader_module(wgpu::include_wgsl!("shaders/compute.wgsl"));
 
