@@ -1,31 +1,20 @@
-use wgpu::{Maintain, RenderPipeline, ShaderModule};
+use wgpu::{RenderPipeline, ShaderModule};
 
 use crate::{
     camera::Camera,
     dimensions::Dimensions,
-    gpu::{Resource, ResourceGroup},
+    gpu::{instance::WgpuInstance, Resource, ResourceGroup},
     light_buffers::LightBufferBuilder,
     scene_buffer::SceneBufferBuilder,
 };
 
 pub struct WgpuContext {
-    pub surface: wgpu::Surface,
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
-    pub config: wgpu::SurfaceConfiguration,
-    pub fragment_module: ShaderModule,
-    pub vertex_module: ShaderModule,
+    pub instance: WgpuInstance,
     pub render_pipeline: RenderPipeline,
     pub dims: Dimensions,
-
     pub resource_group: ResourceGroup,
-}
-
-fn load_shaders(device: &wgpu::Device) -> (ShaderModule, ShaderModule) {
-    let vertex_module = device.create_shader_module(wgpu::include_wgsl!("shaders/vert.wgsl"));
-    let fragment_module = device.create_shader_module(wgpu::include_wgsl!("shaders/frag.wgsl"));
-
-    (vertex_module, fragment_module)
+    pub fragment_module: ShaderModule,
+    pub vertex_module: ShaderModule,
 }
 
 impl<'a> WgpuContext {
@@ -33,53 +22,16 @@ impl<'a> WgpuContext {
         canvas: web_sys::HtmlCanvasElement,
         resources: &'a [(&dyn Resource<'a>, u32)],
     ) -> Self {
-        log::info!("Creating Wgpu Context");
-        let (width, height) = (canvas.width(), canvas.height());
-        log::info!("Canvas size: {width}x{height}");
+        let mut instance = WgpuInstance::new(canvas).await;
 
-        let instance = wgpu::Instance::default();
-        let surface = instance.create_surface_from_canvas(canvas).unwrap();
+        let resource_group: ResourceGroup = ResourceGroup::new(&instance.device, resources);
 
-        // Request adapter with high perf power preference
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions::default())
-            .await
-            .expect("Failed to get requested adapter");
-
-        log::info!("{:?}", adapter.get_downlevel_capabilities());
-        log::info!("Backend: {:?}", adapter.get_info().backend);
-
-        let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    features: wgpu::Features::empty(),
-                    limits: wgpu::Limits::default(),
-                },
-                None,
-            )
-            .await
-            .unwrap();
-
-        let resource_group: ResourceGroup = ResourceGroup::new(&device, resources);
-
-        let surface_config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_capabilities(&adapter).formats[0],
-            width,
-            height,
-            present_mode: wgpu::PresentMode::AutoNoVsync,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-            view_formats: vec![],
-        };
-
-        surface.configure(&device, &surface_config);
-
-        let (vertex_module, fragment_module) = load_shaders(&device);
+        let vertex_module = instance.load_shader_module(wgpu::include_wgsl!("shaders/vert.wgsl"));
+        let fragment_module = instance.load_shader_module(wgpu::include_wgsl!("shaders/frag.wgsl"));
 
         let render_pipeline = {
             let frag_targets = [Some(wgpu::ColorTargetState {
-                format: surface_config.format,
+                format: instance.surface_config.format,
                 blend: Some(wgpu::BlendState::REPLACE),
                 write_mask: wgpu::ColorWrites::ALL,
             })];
@@ -90,11 +42,13 @@ impl<'a> WgpuContext {
                 targets: &frag_targets,
             });
 
-            let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Pipeline Layout"),
-                bind_group_layouts: &[&resource_group.bind_group_layout],
-                push_constant_ranges: &[],
-            });
+            let layout = instance
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Pipeline Layout"),
+                    bind_group_layouts: &[&resource_group.bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
             let desc = &wgpu::RenderPipelineDescriptor {
                 label: Some("Render Pipeline"),
@@ -114,19 +68,21 @@ impl<'a> WgpuContext {
                 multiview: None,
             };
 
-            device.create_render_pipeline(desc)
+            instance.device.create_render_pipeline(desc)
         };
 
+        let dims = Dimensions::new(
+            instance.surface_config.width,
+            instance.surface_config.height,
+        );
+
         Self {
+            instance,
             render_pipeline,
             vertex_module,
             fragment_module,
-            surface,
-            device,
-            queue,
             resource_group,
-            config: surface_config,
-            dims: Dimensions::new(width, height),
+            dims,
         }
     }
 
@@ -137,21 +93,22 @@ impl<'a> WgpuContext {
         camera: &Camera,
     ) -> Result<(), wgpu::SurfaceError> {
         let bind_group = self.resource_group.bind_group_entries(
-            &self.device,
+            &self.instance.device,
             &[(&self.dims, 0), (objects, 1), (lights, 2), (camera, 3)],
         );
 
-        let output_texture = self.surface.get_current_texture()?;
+        let output_texture = self.instance.surface.get_current_texture()?;
 
         let view = output_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
+        let mut encoder =
+            self.instance
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Render Encoder"),
+                });
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -173,7 +130,10 @@ impl<'a> WgpuContext {
             render_pass.draw(0..3, 0..1);
         }
 
-        let submission = self.queue.submit(std::iter::once(encoder.finish()));
+        let submission = self
+            .instance
+            .queue
+            .submit(std::iter::once(encoder.finish()));
         output_texture.present();
 
         Ok(())
