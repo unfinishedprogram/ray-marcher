@@ -4,7 +4,7 @@
 mod angle;
 mod camera;
 mod dimensions;
-mod gpu;
+pub mod gpu;
 mod input;
 mod light_buffers;
 mod quaternion;
@@ -49,8 +49,6 @@ fn performance_now() -> f64 {
 }
 
 pub fn make_scene() -> (SceneBufferBuilder, LightBufferBuilder) {
-    // let mut scene_buffer = SceneBufferBuilder::new();
-
     let mut scene = SceneBufferBuilder::default();
 
     scene
@@ -145,7 +143,8 @@ pub async fn run() {
                 .multiply_scalar(delta_time * 0.1),
         );
 
-        ctx.render(&objects, &lights, &camera).unwrap();
+        ctx.render_to_buffer(&objects, &lights, &camera);
+        ctx.render_to_surface().unwrap();
 
         // Schedule ourself for another requestAnimationFrame callback.
         request_animation_frame(f.borrow().as_ref().unwrap());

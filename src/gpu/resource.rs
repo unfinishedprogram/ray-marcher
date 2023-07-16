@@ -7,7 +7,7 @@ pub trait Resource<'a> {
     fn bind_group_layout_entry(&self, binding: u32) -> wgpu::BindGroupLayoutEntry {
         wgpu::BindGroupLayoutEntry {
             binding,
-            visibility: wgpu::ShaderStages::FRAGMENT,
+            visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: false,

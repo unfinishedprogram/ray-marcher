@@ -1,4 +1,7 @@
-use wgpu::{BindGroupLayout, RenderPipeline, ShaderModule};
+use wgpu::{
+    BindGroupLayout, Buffer, BufferUsages, ComputePipeline, ComputePipelineDescriptor,
+    RenderPipeline, ShaderModule, Texture, TextureDescriptor,
+};
 
 pub struct WgpuInstance {
     pub surface: wgpu::Surface,
@@ -83,7 +86,7 @@ impl WgpuInstance {
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
+                bind_group_layouts: &[bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -91,7 +94,7 @@ impl WgpuInstance {
             label: Some("Render Pipeline"),
             layout: Some(&layout),
             vertex: wgpu::VertexState {
-                module: &vertex_module,
+                module: vertex_module,
                 entry_point: "main",
                 buffers: &[],
             },
@@ -106,5 +109,60 @@ impl WgpuInstance {
         };
 
         self.device.create_render_pipeline(desc)
+    }
+
+    pub fn create_render_buffer(&self) -> Buffer {
+        // Enough to store each color as 4 f32
+        // This allows for HDR and handling colors in fragment shader
+
+        let size = self.surface_config.width as u64 * self.surface_config.height as u64 * 4 * 4;
+        self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Render Buffer"),
+            usage: BufferUsages::COPY_SRC | BufferUsages::STORAGE,
+            mapped_at_creation: false,
+            size,
+        })
+    }
+
+    pub fn create_render_texture(&self) -> Texture {
+        let size = wgpu::Extent3d {
+            width: self.surface_config.width,
+            height: self.surface_config.height,
+            depth_or_array_layers: 1,
+        };
+
+        self.device.create_texture(&TextureDescriptor {
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba32Float,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+            label: Some("Render Texture"),
+        })
+    }
+
+    pub fn create_compute_pipeline(
+        &self,
+        compute_module: &ShaderModule,
+        bind_group_layouts: &[&BindGroupLayout],
+    ) -> ComputePipeline {
+        let layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Compute Layout"),
+                bind_group_layouts,
+                push_constant_ranges: &[],
+            });
+
+        let desc = ComputePipelineDescriptor {
+            label: Some("Compute Pipeline"),
+            layout: Some(&layout),
+            module: compute_module,
+            entry_point: "cs_main",
+        };
+
+        self.device.create_compute_pipeline(&desc)
     }
 }
