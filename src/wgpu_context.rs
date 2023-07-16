@@ -29,47 +29,11 @@ impl<'a> WgpuContext {
         let vertex_module = instance.load_shader_module(wgpu::include_wgsl!("shaders/vert.wgsl"));
         let fragment_module = instance.load_shader_module(wgpu::include_wgsl!("shaders/frag.wgsl"));
 
-        let render_pipeline = {
-            let frag_targets = [Some(wgpu::ColorTargetState {
-                format: instance.surface_config.format,
-                blend: Some(wgpu::BlendState::REPLACE),
-                write_mask: wgpu::ColorWrites::ALL,
-            })];
-
-            let fragment = Some(wgpu::FragmentState {
-                module: &fragment_module,
-                entry_point: "main",
-                targets: &frag_targets,
-            });
-
-            let layout = instance
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Pipeline Layout"),
-                    bind_group_layouts: &[&resource_group.bind_group_layout],
-                    push_constant_ranges: &[],
-                });
-
-            let desc = &wgpu::RenderPipelineDescriptor {
-                label: Some("Render Pipeline"),
-                layout: Some(&layout),
-                vertex: wgpu::VertexState {
-                    module: &vertex_module,
-                    entry_point: "main",
-                    buffers: &[],
-                },
-                fragment,
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    ..Default::default()
-                },
-                depth_stencil: None,
-                multisample: Default::default(),
-                multiview: None,
-            };
-
-            instance.device.create_render_pipeline(desc)
-        };
+        let render_pipeline = instance.create_surface_render_pipeline(
+            &fragment_module,
+            &vertex_module,
+            &resource_group.bind_group_layout,
+        );
 
         let dims = Dimensions::new(
             instance.surface_config.width,
@@ -126,14 +90,13 @@ impl<'a> WgpuContext {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &bind_group, &[]);
-
             render_pass.draw(0..3, 0..1);
         }
 
-        let submission = self
-            .instance
+        self.instance
             .queue
             .submit(std::iter::once(encoder.finish()));
+
         output_texture.present();
 
         Ok(())
