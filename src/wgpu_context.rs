@@ -1,10 +1,13 @@
+pub mod buffers;
+
+use buffers::GPUBuffers;
 use wgpu::{
-    util::DeviceExt, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, Features,
-    Limits, PipelineCompilationOptions, RenderPipeline, ShaderModule,
+    BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, Features, Limits,
+    PipelineCompilationOptions, RenderPipeline, ShaderModule,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::{camera::Camera, light_buffers::LightBuffers, scene_buffer::SceneBuffers};
+use crate::{camera::Camera, light_buffers::LightBuffers, make_scene, scene_buffer::SceneBuffers};
 
 pub struct WgpuContext<'a> {
     pub surface: wgpu::Surface<'a>,
@@ -13,6 +16,8 @@ pub struct WgpuContext<'a> {
     pub config: wgpu::SurfaceConfiguration,
     pub render_pipeline: RenderPipeline,
     pub size: (u32, u32),
+
+    pub buffers: GPUBuffers,
 
     pub bind_group_layout: BindGroupLayout,
 }
@@ -58,7 +63,7 @@ impl<'a> WgpuContext<'a> {
                 &wgpu::DeviceDescriptor {
                     label: None,
                     required_features: Features::empty(),
-                    required_limits: Limits::downlevel_webgl2_defaults(),
+                    required_limits: Limits::default(),
                     memory_hints: wgpu::MemoryHints::Performance,
                 },
                 None,
@@ -66,16 +71,8 @@ impl<'a> WgpuContext<'a> {
             .await
             .expect("Failed to request device");
 
-        let surface_config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_capabilities(&adapter).formats[0],
-            width,
-            height,
-            present_mode: wgpu::PresentMode::AutoNoVsync,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-            view_formats: vec![],
-            desired_maximum_frame_latency: 1,
-        };
+        let mut surface_config = surface.get_default_config(&adapter, width, height).unwrap();
+        surface_config.present_mode = wgpu::PresentMode::AutoVsync;
 
         surface.configure(&device, &surface_config);
 
@@ -170,6 +167,17 @@ impl<'a> WgpuContext<'a> {
             device.create_render_pipeline(desc)
         };
 
+        let buffers = {
+            let (scene, lights) = make_scene();
+            GPUBuffers::create(
+                &device,
+                (width, height),
+                scene,
+                lights,
+                Camera::new(0.5, (0.0, 0.0, -10.0), (0.0, 0.0, 0.0, 1.0), 0.001, 1000.0),
+            )
+        };
+
         Self {
             render_pipeline,
             surface,
@@ -178,6 +186,7 @@ impl<'a> WgpuContext<'a> {
             config: surface_config,
             size: (width, height),
             bind_group_layout,
+            buffers,
         }
     }
 
@@ -187,6 +196,9 @@ impl<'a> WgpuContext<'a> {
         camera: &Camera,
     ) -> Result<(), wgpu::SurfaceError> {
         let (scene, lights) = scene;
+
+        self.buffers
+            .update_buffers(&self.queue, self.size, scene, lights, *camera);
 
         let output_texture = self.surface.get_current_texture()?;
 
@@ -200,39 +212,6 @@ impl<'a> WgpuContext<'a> {
                 label: Some("Render Encoder"),
             });
 
-        let dimension_uniform = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Dimension Buffer"),
-                // Padded to 16 bytes, uniforms must be.
-                contents: bytemuck::bytes_of(&[self.size.0 as f32, self.size.1 as f32, 1.0, 1.0]),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        let scene_data = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Scene Buffer"),
-                contents: bytemuck::bytes_of(&scene),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        let light_data = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Light Buffer"),
-                contents: bytemuck::bytes_of(&lights),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
-        let camera_uniform = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::bytes_of(camera),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
-
         {
             let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Main Bind group"),
@@ -240,19 +219,19 @@ impl<'a> WgpuContext<'a> {
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: dimension_uniform.as_entire_binding(),
+                        resource: self.buffers.dimension_uniform.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: scene_data.as_entire_binding(),
+                        resource: self.buffers.scene_data.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
-                        resource: light_data.as_entire_binding(),
+                        resource: self.buffers.light_data.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 3,
-                        resource: camera_uniform.as_entire_binding(),
+                        resource: self.buffers.camera_uniform.as_entire_binding(),
                     },
                 ],
             });
@@ -276,7 +255,7 @@ impl<'a> WgpuContext<'a> {
             render_pass.draw(0..3, 0..1);
         }
 
-        self.queue.submit(std::iter::once(encoder.finish()));
+        self.queue.submit(Some(encoder.finish()));
         output_texture.present();
         Ok(())
     }

@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{
     angle::Angle,
     camera::Camera,
@@ -42,6 +44,7 @@ impl<'a> App<'a> {
     }
 
     fn render_frame(&mut self) {
+        let start = Instant::now();
         // let mouse = input.mouse_movement();
 
         // yaw -= mouse.0;
@@ -64,6 +67,9 @@ impl<'a> App<'a> {
 
         self.ctx.render(make_scene(), &self.camera).unwrap();
         println!("{:}", self.frame_timer.mark_frame());
+        let end = Instant::now();
+        let elapsed = end - start;
+        println!("Frame time: {:?}", elapsed);
     }
 
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {

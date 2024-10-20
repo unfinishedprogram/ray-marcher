@@ -335,8 +335,6 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     if length(surface_point) < 100.0 {
         color = direct_lighting(surface_point, surface_normal);
     } 
-    
-    
 
     // return vec4<f32>(surface_normal * 0.5 + vec3<f32>(0.5), 1.0);
 
