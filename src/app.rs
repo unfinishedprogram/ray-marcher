@@ -55,7 +55,7 @@ impl<'a> App<'a> {
 
         self.camera.position.add_assign(
             self.input
-                .movement()
+                .camera_translation()
                 .apply_rotation(get_rotation(Angle::from_degrees(self.yaw), Y)),
         );
 
