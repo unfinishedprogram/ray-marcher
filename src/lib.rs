@@ -3,6 +3,7 @@
 mod angle;
 pub mod app;
 mod camera;
+mod frame_timer;
 mod input;
 mod light_buffers;
 mod quaternion;

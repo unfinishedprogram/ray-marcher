@@ -1,6 +1,7 @@
 use crate::{
     angle::Angle,
     camera::Camera,
+    frame_timer::FrameTimer,
     input::Input,
     make_scene,
     quaternion::get_rotation,
@@ -21,6 +22,7 @@ pub struct App<'a> {
     pitch: f32,
     camera: Camera,
     input: Input,
+    frame_timer: FrameTimer,
 }
 
 impl<'a> App<'a> {
@@ -35,6 +37,7 @@ impl<'a> App<'a> {
             pitch: 0.0,
             camera: Camera::new(0.5, (0.0, 0.0, -10.0), (0.0, 0.0, 0.0, 1.0), 0.001, 1000.0),
             input,
+            frame_timer: FrameTimer::new(30),
         }
     }
 
@@ -60,6 +63,7 @@ impl<'a> App<'a> {
         );
 
         self.ctx.render(make_scene(), &self.camera).unwrap();
+        println!("{:}", self.frame_timer.mark_frame());
     }
 
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
