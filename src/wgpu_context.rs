@@ -11,8 +11,6 @@ pub struct WgpuContext<'a> {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
-    pub fragment_module: ShaderModule,
-    pub vertex_module: ShaderModule,
     pub render_pipeline: RenderPipeline,
     pub size: (u32, u32),
 
@@ -174,8 +172,6 @@ impl<'a> WgpuContext<'a> {
 
         Self {
             render_pipeline,
-            vertex_module,
-            fragment_module,
             surface,
             device,
             queue,

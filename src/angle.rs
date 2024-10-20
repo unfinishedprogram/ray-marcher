@@ -11,11 +11,6 @@ impl Angle {
     const FULL_ROTATION: f32 = 2.0 * PI;
 
     #[inline]
-    pub fn from_radians(rad: f32) -> Self {
-        Self(rad % Self::FULL_ROTATION)
-    }
-
-    #[inline]
     pub fn from_degrees(deg: f32) -> Self {
         Self((deg * Self::PI_180) % Self::FULL_ROTATION)
     }
@@ -23,16 +18,6 @@ impl Angle {
     #[inline]
     pub fn rad(self) -> f32 {
         self.0
-    }
-
-    #[inline]
-    pub fn deg(self) -> f32 {
-        self.0 / Self::PI_180
-    }
-
-    #[inline]
-    pub fn rotate(self, other: Angle) -> Angle {
-        Angle((self.0 + other.0) % Self::FULL_ROTATION)
     }
 }
 

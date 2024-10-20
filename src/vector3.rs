@@ -1,8 +1,4 @@
-use crate::{
-    angle::Angle,
-    quaternion::{self, Quaternion},
-    util::interpolation::soft_clamp,
-};
+use crate::quaternion::Quaternion;
 
 pub type Vec3 = (f32, f32, f32);
 
@@ -22,17 +18,11 @@ pub trait Vector3 {
     fn dot(self, other: Self) -> f32;
     fn cross(self, other: Vec3) -> Vec3;
     fn apply_rotation(self, r: Quaternion) -> Vec3;
-    fn rotate(self, axis: Vec3, angle: Angle) -> Vec3;
     fn multiply_scalar(self, scalar: f32) -> Vec3;
     fn normalize(self) -> Vec3;
-    fn rotate_xyz(self, other: Vec3) -> Vec3;
-    fn rgb_u8(self) -> (u8, u8, u8);
     fn sub(self, rhs: Vec3) -> Vec3;
     fn add(self, rhs: Self) -> Vec3;
-    fn channel_multiply(self, rhs: Vec3) -> Vec3;
     fn add_assign(&mut self, rhs: Vec3);
-    fn sub_assign(&mut self, rhs: Vec3);
-    fn max(self, max: f32) -> f32;
 }
 
 impl Vector3 for Vec3 {
@@ -72,12 +62,6 @@ impl Vector3 for Vec3 {
     }
 
     #[inline]
-    fn rotate(self, axis: Vec3, angle: Angle) -> Vec3 {
-        let r = quaternion::get_rotation(angle, axis);
-        self.apply_rotation(r)
-    }
-
-    #[inline]
     fn multiply_scalar(self, scalar: f32) -> Vec3 {
         (self.0 * scalar, self.1 * scalar, self.2 * scalar)
     }
@@ -92,28 +76,6 @@ impl Vector3 for Vec3 {
         }
     }
 
-    fn channel_multiply(self, rhs: Vec3) -> Vec3 {
-        let (x1, y1, z1) = self;
-        let (x2, y2, z2) = rhs;
-        (x1 * x2, y1 * y2, z1 * z2)
-    }
-
-    fn rotate_xyz(self, other: Vec3) -> Vec3 {
-        let (x, y, z) = other;
-        self.rotate((1.0, 0.0, 0.0), Angle::from_radians(x))
-            .rotate((0.0, 1.0, 0.0), Angle::from_radians(y))
-            .rotate((0.0, 0.0, 1.0), Angle::from_radians(z))
-    }
-
-    fn rgb_u8(self) -> (u8, u8, u8) {
-        let (x, y, z) = self;
-        (
-            soft_clamp(x * 255.0, 0.0, 255.0) as u8,
-            soft_clamp(y * 255.0, 0.0, 255.0) as u8,
-            soft_clamp(z * 255.0, 0.0, 255.0) as u8,
-        )
-    }
-
     fn sub(self, rhs: Vec3) -> Vec3 {
         (self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2)
     }
@@ -126,15 +88,5 @@ impl Vector3 for Vec3 {
         self.0 += rhs.0;
         self.1 += rhs.1;
         self.2 += rhs.2;
-    }
-
-    fn sub_assign(&mut self, rhs: Vec3) {
-        self.0 -= rhs.0;
-        self.1 -= rhs.1;
-        self.2 -= rhs.2;
-    }
-
-    fn max(self, max: f32) -> f32 {
-        self.0.max(self.1).max(self.2).max(max)
     }
 }
