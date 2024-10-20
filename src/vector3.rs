@@ -1,6 +1,6 @@
 use crate::{
     angle::Angle,
-    quaternion::{self, Quat, Quaternion},
+    quaternion::{self, Quaternion},
     util::interpolation::soft_clamp,
 };
 

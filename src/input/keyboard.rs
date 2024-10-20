@@ -2,18 +2,8 @@ use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use wasm_bindgen::prelude::*;
 
-use crate::vector3::{Vec3, Vector3};
-
 pub struct KeyboardHandler {
     keys_pressed: Rc<RefCell<HashSet<String>>>,
-}
-
-fn bool_tuple_to_vec((a, b, c): (bool, bool, bool)) -> Vec3 {
-    let x = if a { 1.0 } else { 0.0 };
-    let y = if b { 1.0 } else { 0.0 };
-    let z = if c { 1.0 } else { 0.0 };
-
-    (x, y, z)
 }
 
 impl KeyboardHandler {
@@ -44,18 +34,5 @@ impl KeyboardHandler {
         key_down.forget();
 
         Self { keys_pressed }
-    }
-
-    pub fn is_down(&self, key: &str) -> bool {
-        self.keys_pressed.borrow().contains(key)
-    }
-
-    // Returns a vector representing the players directed movement in 3D
-    pub fn movement(&self) -> Vec3 {
-        let positive = bool_tuple_to_vec((self.is_down("d"), self.is_down("q"), self.is_down("s")));
-        let negative = bool_tuple_to_vec((self.is_down("a"), self.is_down("e"), self.is_down("w")))
-            .multiply_scalar(-1.0);
-
-        Vector3::add(positive, negative).normalize()
     }
 }

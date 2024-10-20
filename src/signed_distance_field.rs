@@ -6,8 +6,6 @@ mod scale;
 mod transform;
 
 use crate::{quaternion::Quaternion, vector3::Vec3};
-pub use combine::*;
-pub use primitive::Primitive;
 pub use transform::{Rotation, Translation};
 
 use self::{repeat::Repeated, rouding::Rounded, scale::Scaled};

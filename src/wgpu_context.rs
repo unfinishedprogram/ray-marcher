@@ -1,19 +1,19 @@
 use wgpu::{
-    util::DeviceExt, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
-    InstanceDescriptor, RenderPipeline, ShaderModule,
+    util::DeviceExt, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, Features,
+    Limits, PipelineCompilationOptions, RenderPipeline, ShaderModule,
 };
+use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{camera::Camera, light_buffers::LightBuffers, scene_buffer::SceneBuffers};
 
-pub struct WgpuContext {
-    pub surface: wgpu::Surface,
+pub struct WgpuContext<'a> {
+    pub surface: wgpu::Surface<'a>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
     pub fragment_module: ShaderModule,
     pub vertex_module: ShaderModule,
     pub render_pipeline: RenderPipeline,
-
     pub size: (u32, u32),
 
     pub bind_group_layout: BindGroupLayout,
@@ -26,21 +26,27 @@ fn load_shaders(device: &wgpu::Device) -> (ShaderModule, ShaderModule) {
     (vertex_module, fragment_module)
 }
 
-impl WgpuContext {
-    pub async fn new(canvas: &web_sys::HtmlCanvasElement) -> Self {
+impl<'a> WgpuContext<'a> {
+    pub async fn new(window: &'a Window) -> Self {
+        let mut size = window.inner_size();
+        size.width = size.width.max(1);
+        size.height = size.height.max(1);
+
         log::info!("Creating Wgpu Context");
-        let (width, height) = (canvas.width(), canvas.height());
+
+        let (width, height) = (size.width, size.height);
+
         log::info!("Canvas size: {width}x{height}");
 
-        let instance = wgpu::Instance::new(InstanceDescriptor::default());
-        let surface = instance.create_surface_from_canvas(canvas).unwrap();
+        let instance = wgpu::Instance::default();
+        let surface = instance.create_surface(window).unwrap();
 
         // Request adapter with high perf power preference
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
+                compatible_surface: Some(&surface),
             })
             .await
             .expect("Failed to get requested adapter");
@@ -52,10 +58,10 @@ impl WgpuContext {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
-                    // Since wgpu isn't well supported yet, we default to webgl2 as a fallback
-                    limits: wgpu::Limits::downlevel_webgl2_defaults(),
                     label: None,
+                    required_features: Features::empty(),
+                    required_limits: Limits::downlevel_webgl2_defaults(),
+                    memory_hints: wgpu::MemoryHints::Performance,
                 },
                 None,
             )
@@ -70,6 +76,7 @@ impl WgpuContext {
             present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![],
+            desired_maximum_frame_latency: 1,
         };
 
         surface.configure(&device, &surface_config);
@@ -133,6 +140,7 @@ impl WgpuContext {
                 module: &fragment_module,
                 entry_point: "main",
                 targets: &frag_targets,
+                compilation_options: PipelineCompilationOptions::default(),
             });
 
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -148,6 +156,7 @@ impl WgpuContext {
                     module: &vertex_module,
                     entry_point: "main",
                     buffers: &[],
+                    compilation_options: PipelineCompilationOptions::default(),
                 },
                 fragment,
                 primitive: wgpu::PrimitiveState {
@@ -157,6 +166,7 @@ impl WgpuContext {
                 depth_stencil: None,
                 multisample: Default::default(),
                 multiview: None,
+                cache: None,
             };
 
             device.create_render_pipeline(desc)
@@ -258,10 +268,10 @@ impl WgpuContext {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
-                        store: true,
+                        store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                ..Default::default()
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
@@ -273,5 +283,13 @@ impl WgpuContext {
         self.queue.submit(std::iter::once(encoder.finish()));
         output_texture.present();
         Ok(())
+    }
+
+    pub fn resize(&mut self, _window: &Window, new_size: PhysicalSize<u32>) {
+        // Reconfigure the surface with the new size
+        self.config.width = new_size.width.max(1);
+        self.config.height = new_size.height.max(1);
+
+        self.surface.configure(&self.device, &self.config);
     }
 }
