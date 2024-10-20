@@ -236,24 +236,32 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
     while iters < MAX_RECUR_DEPTH && STACK_PTR > 0u {
         iters += 1;
         let item = pop();
-        let item_type = item.item_type;
 
-        if item_type == TRANSLATE {
-            var translate = as_translate(item);
-            transformed_point -= translate.v;
-            push(scene.entities[translate.pointer]);
-        } else if item_type == ROTATE {
-            var rotate = as_rotate(item);
-            transformed_point = applyRotation(transformed_point, rotate.rotation);
-            push(scene.entities[rotate.pointer]);
-        } else if item_type == SPHERE {
-            let sphere = as_sphere(item);
-            signed_distance = min(signed_distance, length(transformed_point) - sphere.radius);
-        } else if item_type == BOX {
-            let box = as_box(item);
-            let q = abs(transformed_point) - box.dimensions;
-            let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
-            signed_distance = min(signed_distance, distance);
+        switch item.item_type {
+            case TRANSLATE {
+                var translate = as_translate(item);
+                transformed_point -= translate.v;
+                push(scene.entities[translate.pointer]);
+            }
+
+            case ROTATE {
+                var rotate = as_rotate(item);
+                transformed_point = applyRotation(transformed_point, rotate.rotation);
+                push(scene.entities[rotate.pointer]);
+            }
+            case SPHERE {
+                let sphere = as_sphere(item);
+                signed_distance = min(signed_distance, length(transformed_point) - sphere.radius);
+            }
+            case BOX {
+                let box = as_box(item);
+                let q = abs(transformed_point) - box.dimensions;
+                let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
+                signed_distance = min(signed_distance, distance);
+            }
+            default {
+                break;
+            }
         }
     }
 
