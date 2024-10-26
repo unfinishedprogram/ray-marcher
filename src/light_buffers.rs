@@ -3,14 +3,12 @@ use bytemuck::{Pod, Zeroable};
 const MAX_LIGHTS: usize = 8;
 const LIGHT_SIZE: usize = std::mem::size_of::<Light>();
 
-use crate::vector3::Vec3;
-
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Light {
-    pub position: Vec3,
+    pub position: glam::Vec3,
     pub radius: f32,
-    pub color: Vec3,
+    pub color: glam::Vec3,
     pub enabled: u32,
 }
 

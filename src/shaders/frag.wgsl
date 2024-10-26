@@ -20,7 +20,6 @@ const EMPTY = 0u;
 const SPHERE = 1u;
 const TRANSLATE = 2u;
 const BOX = 3u;
-const ROTATE = 4u;
 
 var<private> STACK_PTR:u32 = 0u;
 var<private> STACK_ITEMS:array<SceneItem, STACK_SIZE>; 
@@ -84,12 +83,6 @@ struct Box {
     dimensions:vec3<f32>,
 }
 
-struct Rotate {
-    item_type: u32,
-    render: u32, 
-    pointer: u32, 
-    rotation:vec4<f32>,
-}
 
 struct ViewRay {
     position: vec3<f32>,
@@ -127,20 +120,6 @@ fn as_box(item:SceneItem) -> Box {
 
     box.dimensions = vec3<f32>(x, y, z);
     return box;
-}
-
-fn as_rotate(item:SceneItem) -> Rotate {
-    var rotate:Rotate;
-    rotate.item_type = ROTATE;
-
-    rotate.pointer = item.pad2;
-    let x = bitcast<f32>(item.pad3);
-    let y = bitcast<f32>(item.pad4);
-    let z = bitcast<f32>(item.pad5);
-    let w = bitcast<f32>(item.pad6);
-
-    rotate.rotation = vec4<f32>(x, y, z, w);
-    return rotate;
 }
 
 fn pop() -> SceneItem {
@@ -242,12 +221,6 @@ fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
                 var translate = as_translate(item);
                 transformed_point -= translate.v;
                 push(scene.entities[translate.pointer]);
-            }
-
-            case ROTATE {
-                var rotate = as_rotate(item);
-                transformed_point = applyRotation(transformed_point, rotate.rotation);
-                push(scene.entities[rotate.pointer]);
             }
             case SPHERE {
                 let sphere = as_sphere(item);

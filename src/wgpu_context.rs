@@ -1,6 +1,7 @@
 pub mod buffers;
 
 use buffers::GPUBuffers;
+use glam::{quat, vec3};
 use wgpu::{
     BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, Features, Limits,
     PipelineCompilationOptions, RenderPipeline, ShaderModule,
@@ -174,7 +175,13 @@ impl<'a> WgpuContext<'a> {
                 (width, height),
                 scene,
                 lights,
-                Camera::new(0.5, (0.0, 0.0, -10.0), (0.0, 0.0, 0.0, 1.0), 0.001, 1000.0),
+                Camera::new(
+                    0.5,
+                    vec3(0.0, 0.0, -10.0),
+                    quat(0.0, 0.0, 0.0, 1.0),
+                    0.001,
+                    1000.0,
+                ),
             )
         };
 

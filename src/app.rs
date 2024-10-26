@@ -1,15 +1,9 @@
 use std::time::Instant;
 
 use crate::{
-    angle::Angle,
-    camera::Camera,
-    frame_timer::FrameTimer,
-    input::Input,
-    make_scene,
-    quaternion::get_rotation,
-    vector3::{Vector3, Y},
-    wgpu_context::WgpuContext,
+    camera::Camera, frame_timer::FrameTimer, input::Input, make_scene, wgpu_context::WgpuContext,
 };
+use glam::{quat, vec3, Quat};
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -35,9 +29,15 @@ impl<'a> App<'a> {
         Self {
             window,
             ctx,
-            yaw: 0.0,
+            yaw: 0.1,
             pitch: 0.0,
-            camera: Camera::new(0.5, (0.0, 0.0, -10.0), (0.0, 0.0, 0.0, 1.0), 0.001, 1000.0),
+            camera: Camera::new(
+                0.5,
+                vec3(0.0, 0.0, -10.0),
+                quat(0.0, 0.0, 0.0, 1.0),
+                0.001,
+                1000.0,
+            ),
             input,
             frame_timer: FrameTimer::new(30),
         }
@@ -56,14 +56,11 @@ impl<'a> App<'a> {
         // let yaw_quat = get_rotation(Angle::from_degrees(yaw), Y);
         // let pitch_quat = get_rotation(Angle::from_degrees(pitch), (0.0, 0.0, -1.0));
 
-        // // camera.orientation = multiply(multiply(yaw_quat, camera.orientation), pitch_quat);
+        // camera.orientation = multiply(multiply(yaw_quat, camera.orientation), pitch_quat);
         // camera.orientation = multiply(multiply(yaw_quat, (0.0, 0.0, 0.0, 1.0)), pitch_quat);
 
-        self.camera.position.add_assign(
-            self.input
-                .camera_translation()
-                .apply_rotation(get_rotation(Angle::from_degrees(self.yaw), Y)),
-        );
+        let rotate = Quat::from_axis_angle(vec3(0.0, 0.0, 1.0), self.yaw);
+        self.camera.position += rotate * self.input.camera_translation();
 
         self.ctx.render(make_scene(), &self.camera).unwrap();
         println!("{:}", self.frame_timer.mark_frame());

@@ -17,6 +17,4 @@ base64 = "0.22.1"
 lazy_static = "1.4.0"
 winit = "0.30.5"
 pollster = "0.3.0"
-
-[profile.release]
-debug = true
+glam = { version = "0.29.0", features = ["bytemuck"] }
