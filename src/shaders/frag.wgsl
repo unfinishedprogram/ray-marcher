@@ -1,5 +1,3 @@
-const STACK_SIZE = 8u;
-const MAX_ENTITIES = 8u;
 const MAX_LIGHTS = 8u;
 
 const MAX_SIGNED_DISTANCE = 10000.0;
@@ -11,18 +9,28 @@ const CLIP_FAR:f32 = 100.0;
 const AO_STEPS:i32 = 4;
 const AO_DISTANCE: f32 = 0.25;
 
-const THRESHOLD:f32 = 0.001;
+const THRESHOLD:f32 = 0.00001;
 
 const MAX_RECUR_DEPTH = 8;
 
-// Constants defining the Enum Index of primitives
-const EMPTY = 0u;
-const SPHERE = 1u;
-const TRANSLATE = 2u;
-const BOX = 3u;
+@group(0) @binding(0) 
+var<uniform> dimensions: vec4<f32>;
 
-var<private> STACK_PTR:u32 = 0u;
-var<private> STACK_ITEMS:array<SceneItem, STACK_SIZE>; 
+@group(0) @binding(1) 
+var<uniform> scene: Scene;
+
+@group(0) @binding(2)
+var<uniform> lights: Lights;
+
+@group(0) @binding(3) 
+var<uniform> camera: Camera;
+
+@group(0) @binding(4)
+var<uniform> cuboids: array<Cuboid, 2>;
+
+@group(0) @binding(5)
+var<uniform> spheres: array<Sphere, 1>;
+
 
 struct Camera {
     position: vec3<f32>,
@@ -32,22 +40,9 @@ struct Camera {
     clip_far: f32,
 }
 
-// Base stack item mostly for padding
-// All scene items must have a "render" property, 
-// if it's value is 0 it is not rendered directly
-struct SceneItem {
-    item_type: u32,
-    render: u32,
-    pad2: u32,
-    pad3: u32,
-    pad4: u32,
-    pad5: u32,
-    pad6: u32,
-    pad7: u32,
-}
-
 struct Scene {
-    entities: array<SceneItem, MAX_ENTITIES>,
+    sphere_count: u32,
+    cuboid_count: u32,
 }
 
 struct Light {
@@ -61,75 +56,19 @@ struct Lights {
     lights: array<Light, MAX_LIGHTS>
 }
 
-// "Inherits" SceneItem
 struct Sphere {
-    item_type: u32,
-    render: u32, 
+    transform: mat4x4<f32>,
     radius: f32,
 }
 
-// "Inherits" SceneItem
-struct Translate {
-    item_type: u32,
-    render: u32, 
-    pointer: u32, 
-    v: vec3<f32>,
+struct Cuboid {
+    transform: mat4x4<f32>,
+    dimensions: vec3<f32>,
 }
-
-// "Inherits" SceneItem
-struct Box {
-    item_type: u32,
-    render: u32, 
-    dimensions:vec3<f32>,
-}
-
 
 struct ViewRay {
     position: vec3<f32>,
     distance: f32, // Distance along ray, 
-}
-
-fn as_sphere(item:SceneItem) -> Sphere {
-    var sphere:Sphere;
-    sphere.radius = bitcast<f32>(item.pad2);
-    sphere.item_type = SPHERE;
-    return sphere;
-}
-
-fn as_translate(item:SceneItem) -> Translate {
-    var translate:Translate;
-    translate.item_type = TRANSLATE;
-    
-    translate.pointer = item.pad2;
-    let x = bitcast<f32>(item.pad3);
-    let y = bitcast<f32>(item.pad4);
-    let z = bitcast<f32>(item.pad5);
-
-    translate.v = vec3<f32>(x, y, z);
-    
-    return translate;
-}
-
-fn as_box(item:SceneItem) -> Box {
-    var box:Box;
-    box.item_type = BOX;
-
-    let x = bitcast<f32>(item.pad2);
-    let y = bitcast<f32>(item.pad3);
-    let z = bitcast<f32>(item.pad4);
-
-    box.dimensions = vec3<f32>(x, y, z);
-    return box;
-}
-
-fn pop() -> SceneItem {
-    STACK_PTR -= 1u;
-    return STACK_ITEMS[STACK_PTR];
-}
-
-fn push(item:SceneItem) {
-    STACK_ITEMS[STACK_PTR] = item;
-    STACK_PTR += 1u;
 }
 
 fn applyRotation(v:vec3<f32>, rv:vec4<f32>) -> vec3<f32>{
@@ -205,52 +144,33 @@ fn trace_shadow(point:vec3<f32>, light: Light) -> f32 {
     return 0.25 * (1.0 + res) * (1.0 + res) * (2.0 - res);
 }
 
-fn evaluate_sdf(index: u32, point: vec3<f32>) -> f32 {
-    var signed_distance:f32 = MAX_SIGNED_DISTANCE;
-    var transformed_point:vec3<f32> = point;
-    push(scene.entities[index]);
-
-    var iters = 0;
-    // While items remain on the stack, evaluate them
-    while iters < MAX_RECUR_DEPTH && STACK_PTR > 0u {
-        iters += 1;
-        let item = pop();
-
-        switch item.item_type {
-            case TRANSLATE {
-                var translate = as_translate(item);
-                transformed_point -= translate.v;
-                push(scene.entities[translate.pointer]);
-            }
-            case SPHERE {
-                let sphere = as_sphere(item);
-                signed_distance = min(signed_distance, length(transformed_point) - sphere.radius);
-            }
-            case BOX {
-                let box = as_box(item);
-                let q = abs(transformed_point) - box.dimensions;
-                let distance = length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)),0.0);
-                signed_distance = min(signed_distance, distance);
-            }
-            default {
-                break;
-            }
-        }
-    }
-
-    return signed_distance;
+fn evaluate_sdf_sphere(sphere: Sphere, point: vec3<f32>) -> f32 {
+    let transformed_point = sphere.transform * vec4f(point, 1.0);
+    return length(transformed_point.xyz) - sphere.radius;
 }
 
-fn map(point:vec3<f32>) -> f32 {
+fn evaluate_sdf_cuboid(cuboid: Cuboid, point: vec3<f32>) -> f32 {
+    let transformed_point =  cuboid.transform * vec4f(point, 1.0);
+    let q = abs(transformed_point.xyz) - cuboid.dimensions;
+    return length(max(q, vec3<f32>(0.0))) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+fn evaluate_sdf(point: vec3<f32>) -> f32 {
     var min_dist = MAX_SIGNED_DISTANCE;
 
-    for (var i = 0u; i < MAX_ENTITIES; i++) {
-        if scene.entities[i].render != 0u {
-            min_dist = min(min_dist, evaluate_sdf(i, point));
-        }
+    for (var i = 0u; i < scene.sphere_count; i++) {
+        min_dist = min(min_dist, evaluate_sdf_sphere(spheres[i], point));
+    }
+
+    for (var i = 0u; i < scene.cuboid_count; i++) {
+        min_dist = min(min_dist, evaluate_sdf_cuboid(cuboids[i], point));
     }
 
     return min_dist;
+}
+
+fn map(point:vec3<f32>) -> f32 {
+    return evaluate_sdf(point);
 }
 
 fn surface_normal(point:vec3<f32>) -> vec3<f32> {
@@ -265,17 +185,6 @@ fn surface_normal(point:vec3<f32>) -> vec3<f32> {
     ));
 }
 
-@group(0) @binding(0) 
-var<uniform> dimensions: vec4<f32>;
-
-@group(0) @binding(1) 
-var<uniform> scene: Scene;
-
-@group(0) @binding(2)
-var<uniform> lights: Lights;
-
-@group(0) @binding(3) 
-var<uniform> camera: Camera;
 
 struct Input {
     @builtin(position) screen_cords: vec4<f32>,
@@ -293,32 +202,31 @@ fn main(in: Input) -> @location(0) vec4<f32> {
     let ray_dir = normalize(vec3(aspected.x, -aspected.y, 1.0));
     let ray_direction = applyRotation(ray_dir, camera.orientation);
     let ray_origin = camera.position;
-    var ray_length:f32 = camera.clip_near;
+    var ray_length:f32 = CLIP_NEAR;
     var steps:u32 = 0u;
 
     loop {
         let point = ray_origin + (ray_direction * ray_length);
         let min_signed_distance = map(point);
-        if ray_length > CLIP_FAR { break; }
-        if min_signed_distance < THRESHOLD { break; }
+        if ray_length > CLIP_FAR { break;}
+        if min_signed_distance < THRESHOLD { break;  }
         ray_length += min_signed_distance;
         steps++;
         if steps > MAX_MARCH_STEPS {break;}
     }
     
     let surface_point = ray_origin + ray_direction * ray_length;
-    let surface_normal = surface_normal(surface_point);
 
-    // let occlusion = ambient_occlusion(surface_point, surface_normal);
+    let surface_normal = surface_normal(surface_point);
+    let occlusion = ambient_occlusion(surface_point, surface_normal);
 
     var color = vec3<f32>(0.0);
 
     if length(surface_point) < 100.0 {
         color = direct_lighting(surface_point, surface_normal);
-    } 
+    }
 
-    // return vec4<f32>(surface_normal * 0.5 + vec3<f32>(0.5), 1.0);
-
-
-    return vec4<f32>(color, 1.0);
+    // return vec4<f32>(surface_normal, 1.0);
+    // return vec4<f32>(color, 1.0);
+    return vec4<f32>(vec3f(f32(steps) / f32(MAX_MARCH_STEPS)), 1.0);
 }

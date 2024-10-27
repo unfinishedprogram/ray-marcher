@@ -8,7 +8,10 @@ use wgpu::{
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::{camera::Camera, light_buffers::LightBuffers, make_scene, scene_buffer::SceneBuffers};
+use crate::{
+    camera::Camera, light_buffers::LightBuffers, make_scene,
+    scene_descriptor::SceneDescriptorBuilder,
+};
 
 pub struct WgpuContext<'a> {
     pub surface: wgpu::Surface<'a>,
@@ -120,6 +123,26 @@ impl<'a> WgpuContext<'a> {
                     },
                     count: None,
                 },
+                BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -199,7 +222,7 @@ impl<'a> WgpuContext<'a> {
 
     pub fn render(
         &self,
-        scene: (SceneBuffers, LightBuffers),
+        scene: (SceneDescriptorBuilder, LightBuffers),
         camera: &Camera,
     ) -> Result<(), wgpu::SurfaceError> {
         let (scene, lights) = scene;
@@ -239,6 +262,14 @@ impl<'a> WgpuContext<'a> {
                     wgpu::BindGroupEntry {
                         binding: 3,
                         resource: self.buffers.camera_uniform.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: self.buffers.cuboids.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: self.buffers.spheres.as_entire_binding(),
                     },
                 ],
             });

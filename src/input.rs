@@ -1,8 +1,8 @@
 pub mod keyboard_state;
 
-use glam::{vec3, Vec3};
+use glam::{vec2, vec3, Vec2, Vec3};
 use keyboard_state::KeyboardState;
-use winit::keyboard::Key;
+use winit::keyboard::{Key, NamedKey};
 
 pub struct Input {
     pub keyboard: KeyboardState,
@@ -15,7 +15,7 @@ impl Input {
         Self {
             keyboard: KeyboardState::default(),
             movement_speed: 0.05,
-            sensitivity: 0.1,
+            sensitivity: 2.0,
         }
     }
 
@@ -33,5 +33,19 @@ impl Input {
         );
 
         (positive - negative) * self.movement_speed
+    }
+
+    pub fn camera_rotation(&self) -> Vec2 {
+        let positive = vec2(
+            self.keyboard.is_down(Key::Named(NamedKey::ArrowRight)) as u32 as f32,
+            self.keyboard.is_down(Key::Named(NamedKey::ArrowDown)) as u32 as f32,
+        );
+
+        let negative = vec2(
+            self.keyboard.is_down(Key::Named(NamedKey::ArrowLeft)) as u32 as f32,
+            self.keyboard.is_down(Key::Named(NamedKey::ArrowUp)) as u32 as f32,
+        );
+
+        (positive - negative) * self.sensitivity
     }
 }

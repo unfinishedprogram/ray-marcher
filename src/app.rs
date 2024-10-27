@@ -45,22 +45,28 @@ impl<'a> App<'a> {
 
     fn render_frame(&mut self) {
         let start = Instant::now();
-        // let mouse = input.mouse_movement();
+        let rotation_input = self.input.camera_rotation();
 
-        // yaw -= mouse.0;
-        // pitch -= mouse.1;
+        // Accumulate yaw and pitch values
+        self.yaw -= rotation_input.x;
+        self.pitch -= rotation_input.y;
 
-        // pitch = pitch.clamp(-90.0, 90.0);
-        // yaw %= 360.0;
+        // Clamp pitch to avoid gimbal lock
+        self.pitch = self.pitch.clamp(-90.0, 90.0);
+        self.yaw %= 360.0;
 
-        // let yaw_quat = get_rotation(Angle::from_degrees(yaw), Y);
-        // let pitch_quat = get_rotation(Angle::from_degrees(pitch), (0.0, 0.0, -1.0));
+        let yaw_quat = Quat::from_rotation_y(self.yaw.to_radians());
+        let pitch_quat = Quat::from_rotation_x(self.pitch.to_radians());
 
-        // camera.orientation = multiply(multiply(yaw_quat, camera.orientation), pitch_quat);
-        // camera.orientation = multiply(multiply(yaw_quat, (0.0, 0.0, 0.0, 1.0)), pitch_quat);
+        // Apply yaw first, then pitch
+        self.camera.orientation = pitch_quat * yaw_quat;
 
-        let rotate = Quat::from_axis_angle(vec3(0.0, 0.0, 1.0), self.yaw);
-        self.camera.position += rotate * self.input.camera_translation();
+        // Move the camera
+        let translation = self.input.camera_translation();
+        // Orient the translation vector by the camera's orientation
+
+        let translation = self.camera.orientation.inverse() * translation;
+        self.camera.position += translation;
 
         self.ctx.render(make_scene(), &self.camera).unwrap();
         println!("{:}", self.frame_timer.mark_frame());
@@ -68,7 +74,6 @@ impl<'a> App<'a> {
         let elapsed = end - start;
         println!("Frame time: {:?}", elapsed);
     }
-
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.ctx.resize(self.window, new_size);
     }

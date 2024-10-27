@@ -1,10 +1,14 @@
 use wgpu::{util::DeviceExt, Device};
 
-use crate::{camera::Camera, light_buffers::LightBuffers, scene_buffer::SceneBuffers};
+use crate::{
+    camera::Camera, light_buffers::LightBuffers, scene_descriptor::SceneDescriptorBuilder,
+};
 
 pub struct GPUBuffers {
     pub dimension_uniform: wgpu::Buffer,
     pub scene_data: wgpu::Buffer,
+    pub cuboids: wgpu::Buffer,
+    pub spheres: wgpu::Buffer,
     pub light_data: wgpu::Buffer,
     pub camera_uniform: wgpu::Buffer,
 }
@@ -14,7 +18,7 @@ impl GPUBuffers {
         &self,
         queue: &wgpu::Queue,
         dimensions: (u32, u32),
-        scene: SceneBuffers,
+        scene: SceneDescriptorBuilder,
         lights: LightBuffers,
         camera: Camera,
     ) {
@@ -23,7 +27,13 @@ impl GPUBuffers {
             0,
             bytemuck::bytes_of(&[dimensions.0 as f32, dimensions.1 as f32, 1.0, 1.0]),
         );
-        queue.write_buffer(&self.scene_data, 0, bytemuck::bytes_of(&scene));
+        queue.write_buffer(
+            &self.scene_data,
+            0,
+            bytemuck::bytes_of(&scene.length_descriptor()),
+        );
+        queue.write_buffer(&self.cuboids, 0, bytemuck::cast_slice(&scene.cuboids));
+        queue.write_buffer(&self.spheres, 0, bytemuck::cast_slice(&scene.spheres));
         queue.write_buffer(&self.light_data, 0, bytemuck::bytes_of(&lights));
         queue.write_buffer(&self.camera_uniform, 0, bytemuck::bytes_of(&camera));
     }
@@ -31,7 +41,7 @@ impl GPUBuffers {
     pub fn create(
         device: &Device,
         dimensions: (u32, u32),
-        scene: SceneBuffers,
+        scene: SceneDescriptorBuilder,
         lights: LightBuffers,
         camera: Camera,
     ) -> Self {
@@ -44,7 +54,7 @@ impl GPUBuffers {
 
         let scene_data = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Scene Buffer"),
-            contents: bytemuck::bytes_of(&scene),
+            contents: bytemuck::bytes_of(&scene.length_descriptor()),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -60,11 +70,25 @@ impl GPUBuffers {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        let cuboids = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Cuboid Buffer"),
+            contents: bytemuck::cast_slice(&scene.cuboids),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let spheres = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Sphere Buffer"),
+            contents: bytemuck::cast_slice(&scene.spheres),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
         Self {
             dimension_uniform,
             scene_data,
             light_data,
             camera_uniform,
+            cuboids,
+            spheres,
         }
     }
 }
