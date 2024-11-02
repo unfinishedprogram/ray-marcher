@@ -113,8 +113,8 @@ fn direct_lighting(point:vec3<f32>, normal:vec3<f32>) -> vec3<f32> {
         if power > 0.0 {
             power *= trace_shadow(point, l);
         }
-        
-        light += l.color * power;
+
+        light += l.color * max(0.0, power);
     }
     
     return light;
@@ -190,18 +190,7 @@ struct Input {
     @builtin(position) screen_cords: vec4<f32>,
 };
 
-@fragment
-fn main(in: Input) -> @location(0) vec4<f32> {
-    // Get the aspect ratio of the render target
-    let aspect_ratio = dimensions.x / dimensions.y;
-    // Normalize the pixel coordonates to -0.5 - 0.5;
-    let normalized = in.screen_cords / vec4<f32>(dimensions.x, dimensions.y, 1.0, 1.0) - vec4<f32>(0.5);
-
-    let aspected = normalized * vec4<f32>(aspect_ratio, 1.0, 1.0, 1.0);
-
-    let ray_dir = normalize(vec3(aspected.x, -aspected.y, 1.0));
-    let ray_direction = applyRotation(ray_dir, camera.orientation);
-    let ray_origin = camera.position;
+fn surface_point(ray_origin: vec3f, ray_direction: vec3f) -> vec3f {
     var ray_length:f32 = CLIP_NEAR;
     var steps:u32 = 0u;
 
@@ -214,19 +203,55 @@ fn main(in: Input) -> @location(0) vec4<f32> {
         steps++;
         if steps > MAX_MARCH_STEPS {break;}
     }
-    
-    let surface_point = ray_origin + ray_direction * ray_length;
+
+    return ray_origin + ray_direction * ray_length;
+}
+
+
+@fragment
+fn main(in: Input) -> @location(0) vec4<f32> {
+    // Get the aspect ratio of the render target
+    let aspect_ratio = dimensions.x / dimensions.y;
+    // Normalize the pixel coordonates to -0.5 - 0.5;
+    let normalized = in.screen_cords / vec4<f32>(dimensions.x, dimensions.y, 1.0, 1.0) - vec4<f32>(0.5);
+
+    let aspected = normalized * vec4<f32>(aspect_ratio, 1.0, 1.0, 1.0);
+
+    let ray_dir = normalize(vec3(aspected.x, -aspected.y, 1.0));
+    let ray_direction = applyRotation(ray_dir, camera.orientation);
+    let ray_origin = camera.position;
+
+    let surface_point = surface_point(ray_origin, ray_direction);
 
     let surface_normal = surface_normal(surface_point);
+
+    let reflected_ray = reflect(ray_direction, surface_normal);
+
+    let reflected_point = surface_point(surface_point, reflected_ray);
+
     let occlusion = ambient_occlusion(surface_point, surface_normal);
 
+    let reflected_surface_normal = surface_normal(reflected_point);
+
+    let reflected_occlusion = ambient_occlusion(reflected_point, reflected_surface_normal);
+
     var color = vec3<f32>(0.0);
+    var reflected_color = vec3<f32>(0.0);
 
     if length(surface_point) < 100.0 {
-        color = direct_lighting(surface_point, surface_normal);
+        color = direct_lighting(surface_point, surface_normal) * max(0.0, 1.0 - occlusion);
     }
 
-    // return vec4<f32>(surface_normal, 1.0);
-    // return vec4<f32>(color, 1.0);
-    return vec4<f32>(vec3f(f32(steps) / f32(MAX_MARCH_STEPS)), 1.0);
+    if length(reflected_point - surface_point) < 100.0 {
+        reflected_color = direct_lighting(reflected_point, reflected_surface_normal) * max(0.0, 1.0 - reflected_occlusion);
+    }
+
+    // Apply fresnel effect
+    let ratio = pow(abs(dot(ray_direction, surface_normal)), 0.5);
+    
+    color = mix(reflected_color, color, ratio);
+
+    color = sqrt(color);
+
+    return vec4<f32>(color, 1.0);
 }
